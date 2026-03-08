@@ -1,9 +1,7 @@
 export default function App() {
   return (
-    <div style={{padding: "2rem", fontFamily: "sans-serif"}}>
+    <div>
       <h1>SurplusRecoveryPro</h1>
-      <p>Dashboard coming soon...</p>
     </div>
   )
 }
-Click "Commit

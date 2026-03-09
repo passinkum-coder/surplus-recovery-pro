@@ -1,40 +1,10 @@
+Yes it should scroll down to the pricing section! That's a known limitation of the current setup — the **VIEW PRICING** button doesn't have the scroll function wired up in the deployed version.
 
-import { useState } from "react"
+Let me fix that now:
 
-const C = {
-  bg: "#0a1628", card: "#0f2040", border: "#1a3058",
-  gold: "#c9a84c", text: "#e8e0d0", muted: "#6b7a8d",
-  light: "#a0aec0", green: "#22c55e", red: "#ef4444",
-  purple: "#818cf8", nav: "#071020"
-}
+Now let me make sure the pricing section has the `id="pricing"` tag:
 
-const claims = [
-  { id:"SRP-001", owner:"James Wilson", county:"Cook County, IL", amount:"$12,400", status:"Active", date:"Mar 1, 2026" },
-  { id:"SRP-002", owner:"Maria Garcia", county:"Harris County, TX", amount:"$8,750", status:"Pending", date:"Feb 28, 2026" },
-  { id:"SRP-003", owner:"Robert Chen", county:"LA County, CA", amount:"$31,200", status:"Filed", date:"Feb 25, 2026" },
-  { id:"SRP-004", owner:"Lisa Thompson", county:"Maricopa, AZ", amount:"$5,900", status:"Complete", date:"Feb 20, 2026" },
-]
-const tiers = [
-  { name:"Basic", price:"$49", features:["Single county access","Owner contract templates","Basic surplus search tools","Claim status tracking","Email support"] },
-  { name:"Professional", price:"$149", featured:true, features:["Multi-county access (up to 5)","Owner contract templates","Document filing guides","Claim status tracking","Skip tracing (10/mo)","Priority email support","County auction alerts"] },
-  { name:"Premium", price:"$349", features:["Unlimited county access","Lawyer consultations (2/mo)","Skip tracing (unlimited)","Automated owner outreach","Court filing assistance","Heir research tools","Lead list exports","Dedicated account manager"] },
-]
-const addons = [
-  {name:"Extra County Access",price:"$19/mo"},{name:"Lawyer Consultation",price:"$99/session"},
-  {name:"Skip Trace Search",price:"$12/search"},{name:"Document Notarization",price:"$29/doc"},
-  {name:"Heir Research Report",price:"$79/report"},{name:"Done-For-You Filing",price:"$199/claim"},
-  {name:"Lead List Export",price:"$49/export"},{name:"Training Course",price:"$299 one-time"},
-]
-
-function Badge({status}) {
-  const map = {Active:{bg:"rgba(201,168,76,0.15)",c:"#c9a84c"},Pending:{bg:"rgba(240,180,41,0.15)",c:"#f0b429"},Filed:{bg:"rgba(129,140,248,0.15)",c:"#818cf8"},Complete:{bg:"rgba(34,197,94,0.15)",c:"#22c55e"}}
-  const s = map[status]||map.Active
-  return <span style={{background:s.bg,color:s.c,padding:"0.2rem 0.6rem",borderRadius:"3px",fontSize:"0.72rem",fontWeight:"bold",letterSpacing:"0.05em",textTransform:"uppercase"}}>{status}</span>
-}
-
-export default function App() {
-  const [page, setPage] = useState("home")
-  const [modal, setModal] = useState(null)
+Fixed! Download this updated **App.jsx**, paste it into GitHub replacing the current file, and VIEW PRICING will smoothly scroll down to the pricing section. Same process as before — just make sure no ` ```jsx ` lines sneak in at the top or bottom!  const [modal, setModal] = useState(null)
   const [mode, setMode] = useState("login")
   const [user, setUser] = useState(null)
   const [form, setForm] = useState({name:"",email:"",password:""})

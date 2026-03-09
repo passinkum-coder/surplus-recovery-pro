@@ -1,6 +1,4 @@
-You're right, I keep showing you code instead of a live preview. Let me fix that right now — here's the actual clickable app:
 
-Here's the live interactive preview — you should see a rendered app below, not code:
 
 ```jsx
 import { useState } from "react"

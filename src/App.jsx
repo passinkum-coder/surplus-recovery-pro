@@ -1,5 +1,4 @@
 
-```jsx
 import { useState } from "react"
 
 const C = {

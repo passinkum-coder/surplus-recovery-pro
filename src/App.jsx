@@ -89,6 +89,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [hoveredTier, setHoveredTier] = useState(null)
   const [forgotSent, setForgotSent] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [claims, setClaims] = useState([])
   const [claimsLoading, setClaimsLoading] = useState(false)
   const [newClaim, setNewClaim] = useState({ owner_name: "", county: "", state: "", amount: "", notes: "" })
@@ -463,7 +464,7 @@ export default function App() {
                 <form onSubmit={handleLogin}>
                   {mode === "signup" && <input style={inputStyle} placeholder="Full Name" value={form.name} onChange={function(e) { setForm({ ...form, name: e.target.value }) }} />}
                   <input style={inputStyle} type="email" placeholder="Email Address" value={form.email} onChange={function(e) { setForm({ ...form, email: e.target.value }) }} required />
-                  <input style={inputStyle} type="password" placeholder="Password" value={form.password} onChange={function(e) { setForm({ ...form, password: e.target.value }) }} required />
+                  <div style={{ position: "relative", marginBottom: "1rem" }}><input style={{ ...inputStyle, marginBottom: 0, paddingRight: "2.5rem" }} type={showPassword ? "text" : "password"} placeholder="Password" value={form.password} onChange={function(e) { setForm({ ...form, password: e.target.value }) }} required /><span onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: C.muted, fontSize: "0.85rem", userSelect: "none" }}>{showPassword ? "HIDE" : "SHOW"}</span></div>
                   {mode === "login" && (
                     <div style={{ textAlign: "right", marginTop: "-0.5rem", marginBottom: "1rem" }}>
                       <span style={{ fontSize: "0.8rem", color: C.gold, cursor: "pointer" }} onClick={() => { setMode("forgot"); setAuthError("") }}>Forgot password?</span>

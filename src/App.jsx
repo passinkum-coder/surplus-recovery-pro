@@ -12,13 +12,6 @@ const C = {
   green: "#22c55e", red: "#ef4444", purple: "#818cf8", nav: "#071020",
 }
 
-const claims = [
-  { id: "SRP-001", owner: "James Wilson", county: "Cook County, IL", amount: "$12,400", status: "Active", date: "Mar 1, 2026" },
-  { id: "SRP-002", owner: "Maria Garcia", county: "Harris County, TX", amount: "$8,750", status: "Pending", date: "Feb 28, 2026" },
-  { id: "SRP-003", owner: "Robert Chen", county: "LA County, CA", amount: "$31,200", status: "Filed", date: "Feb 25, 2026" },
-  { id: "SRP-004", owner: "Lisa Thompson", county: "Maricopa, AZ", amount: "$5,900", status: "Complete", date: "Feb 20, 2026" },
-]
-
 const tiers = [
   { name: "Basic", price: "$49", featured: false, features: ["Single county access", "Owner contract templates", "Basic surplus search tools", "Claim status tracking", "Email support"] },
   { name: "Professional", price: "$149", featured: true, features: ["Multi-county access (up to 5)", "Owner contract templates", "Document filing guides", "Claim status tracking", "Skip tracing (10/mo)", "Priority email support", "County auction alerts"] },
@@ -36,6 +29,8 @@ const addons = [
   { name: "Training Course", price: "$299 one-time" },
 ]
 
+const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
+
 function Badge({ status }) {
   const map = {
     Active: { bg: "rgba(201,168,76,0.15)", c: "#c9a84c" },
@@ -43,7 +38,7 @@ function Badge({ status }) {
     Filed: { bg: "rgba(129,140,248,0.15)", c: "#818cf8" },
     Complete: { bg: "rgba(34,197,94,0.15)", c: "#22c55e" },
   }
-  const s = map[status] || map.Active
+  const s = map[status] || map.Pending
   return (
     <span style={{ background: s.bg, color: s.c, padding: "0.2rem 0.6rem", borderRadius: "3px", fontSize: "0.72rem", fontWeight: "bold", letterSpacing: "0.05em", textTransform: "uppercase" }}>
       {status}
@@ -72,7 +67,7 @@ function PricingCard({ t, hoveredTier, setHoveredTier, onGetStarted }) {
         {t.features.map(function(f) {
           return (
             <li key={f} style={{ display: "flex", gap: "0.6rem", padding: "0.42rem 0", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}>
-              <span style={{ color: C.gold, flexShrink: 0 }}>check</span>{f}
+              <span style={{ color: C.gold, flexShrink: 0 }}>✓</span>{f}
             </li>
           )
         })}
@@ -94,6 +89,11 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [hoveredTier, setHoveredTier] = useState(null)
   const [forgotSent, setForgotSent] = useState(false)
+  const [claims, setClaims] = useState([])
+  const [claimsLoading, setClaimsLoading] = useState(false)
+  const [newClaim, setNewClaim] = useState({ owner_name: "", county: "", state: "", amount: "", notes: "" })
+  const [claimError, setClaimError] = useState("")
+  const [claimSaving, setClaimSaving] = useState(false)
 
   useEffect(function() {
     supabase.auth.getSession().then(function(result) {
@@ -109,10 +109,54 @@ export default function App() {
       } else {
         setUser(null)
         setPage("home")
+        setClaims([])
       }
     })
     return function() { listener.data.subscription.unsubscribe() }
   }, [])
+
+  useEffect(function() {
+    if (page === "dashboard" && user) {
+      fetchClaims()
+    }
+  }, [page, user])
+
+  async function fetchClaims() {
+    setClaimsLoading(true)
+    const { data, error } = await supabase
+      .from("claims")
+      .select("*")
+      .order("created_at", { ascending: false })
+    if (!error && data) setClaims(data)
+    setClaimsLoading(false)
+  }
+
+  async function handleSaveClaim(e) {
+    e.preventDefault()
+    setClaimError("")
+    if (!newClaim.owner_name || !newClaim.county || !newClaim.state) {
+      setClaimError("Owner name, county, and state are required.")
+      return
+    }
+    setClaimSaving(true)
+    const { error } = await supabase.from("claims").insert({
+      user_id: user.id,
+      owner_name: newClaim.owner_name,
+      county: newClaim.county,
+      state: newClaim.state,
+      amount: newClaim.amount ? parseFloat(newClaim.amount.replace(/[^0-9.]/g, "")) : null,
+      notes: newClaim.notes,
+      status: "Pending",
+    })
+    setClaimSaving(false)
+    if (error) {
+      setClaimError(error.message)
+    } else {
+      setModal(null)
+      setNewClaim({ owner_name: "", county: "", state: "", amount: "", notes: "" })
+      fetchClaims()
+    }
+  }
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -136,9 +180,7 @@ export default function App() {
     e.preventDefault()
     setLoading(true)
     setAuthError("")
-    const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
-      redirectTo: window.location.origin,
-    })
+    const { error } = await supabase.auth.resetPasswordForEmail(form.email, { redirectTo: window.location.origin })
     setLoading(false)
     if (error) { setAuthError(error.message) } else { setForgotSent(true) }
   }
@@ -169,7 +211,26 @@ export default function App() {
     fontFamily: "Georgia, serif", outline: "none",
   }
 
+  const labelStyle = {
+    display: "block", fontSize: "0.68rem", color: C.muted, textTransform: "uppercase",
+    letterSpacing: "0.12em", marginBottom: "0.35rem",
+  }
+
   const userName = user && (user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email.split("@")[0])
+
+  const totalRecovered = claims.reduce(function(sum, c) { return sum + (c.amount || 0) }, 0)
+  const activeClaims = claims.filter(function(c) { return c.status === "Active" }).length
+  const pendingClaims = claims.filter(function(c) { return c.status === "Pending" }).length
+  const counties = new Set(claims.map(function(c) { return c.county + ", " + c.state })).size
+
+  function formatAmount(n) {
+    if (!n) return "-"
+    return "$" + Number(n).toLocaleString()
+  }
+
+  function formatDate(d) {
+    return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  }
 
   if (page === "dashboard" && user) {
     return (
@@ -181,20 +242,22 @@ export default function App() {
             <button onClick={handleLogout} style={{ padding: "0.35rem 0.9rem", border: "1px solid " + C.border, borderRadius: "3px", background: "none", color: C.light, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.8rem", letterSpacing: "0.05em" }}>SIGN OUT</button>
           </div>
         </div>
+
         <div style={{ padding: "2rem 2.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem" }}>Welcome back, {userName}</div>
               <div style={{ color: C.muted, fontSize: "0.8rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Surplus Recovery Dashboard - Professional Plan</div>
             </div>
-            <button style={{ padding: "0.65rem 1.4rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.06em", fontSize: "0.85rem" }}>+ NEW CLAIM</button>
+            <button onClick={() => { setClaimError(""); setModal("newclaim") }} style={{ padding: "0.65rem 1.4rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.06em", fontSize: "0.85rem" }}>+ NEW CLAIM</button>
           </div>
+
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
             {[
-              { l: "Active Claims", v: "4", s: "+2 this month", c: C.gold },
-              { l: "Total Recovered", v: "$58,250", s: "up 18% vs last month", c: C.green },
-              { l: "Counties Tracked", v: "3", s: "5 max on your plan", c: C.purple },
-              { l: "Pending Actions", v: "2", s: "Requires attention", c: C.red },
+              { l: "Total Claims", v: String(claims.length), s: "in your account", c: C.gold },
+              { l: "Total Recovered", v: "$" + totalRecovered.toLocaleString(), s: "across all claims", c: C.green },
+              { l: "Counties Tracked", v: String(counties), s: "unique counties", c: C.purple },
+              { l: "Pending Claims", v: String(pendingClaims), s: "awaiting action", c: C.red },
             ].map(function(x) {
               return (
                 <div key={x.l} style={{ background: C.card, borderTop: "3px solid " + x.c, border: "1px solid " + C.border, borderRadius: "4px", padding: "1.4rem" }}>
@@ -205,36 +268,96 @@ export default function App() {
               )
             })}
           </div>
+
           <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", overflow: "hidden" }}>
             <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: "bold", color: "#fff", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Recent Claims</span>
-              <span style={{ fontSize: "0.78rem", color: C.gold, cursor: "pointer", letterSpacing: "0.05em" }}>VIEW ALL</span>
+              <span style={{ fontWeight: "bold", color: "#fff", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your Claims</span>
+              <span style={{ fontSize: "0.78rem", color: C.gold, cursor: "pointer", letterSpacing: "0.05em" }}>{claims.length} TOTAL</span>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#071020" }}>
-                  {["Claim ID", "Owner", "County", "Amount", "Status", "Date"].map(function(h) {
-                    return <th key={h} style={{ padding: "0.7rem 1.25rem", textAlign: "left", fontSize: "0.68rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.12em", borderBottom: "1px solid " + C.border }}>{h}</th>
+            {claimsLoading ? (
+              <div style={{ padding: "2rem", textAlign: "center", color: C.muted }}>Loading claims...</div>
+            ) : claims.length === 0 ? (
+              <div style={{ padding: "3rem", textAlign: "center" }}>
+                <div style={{ color: C.muted, marginBottom: "1rem", fontSize: "0.9rem" }}>No claims yet. Add your first claim to get started.</div>
+                <button onClick={() => { setClaimError(""); setModal("newclaim") }} style={{ padding: "0.65rem 1.4rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.82rem" }}>+ ADD FIRST CLAIM</button>
+              </div>
+            ) : (
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#071020" }}>
+                    {["Owner", "County", "State", "Amount", "Status", "Date Added"].map(function(h) {
+                      return <th key={h} style={{ padding: "0.7rem 1.25rem", textAlign: "left", fontSize: "0.68rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.12em", borderBottom: "1px solid " + C.border }}>{h}</th>
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {claims.map(function(r, i) {
+                    return (
+                      <tr key={r.id} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}>
+                        <td style={{ padding: "0.9rem 1.25rem", color: C.gold, fontSize: "0.88rem", fontWeight: "bold" }}>{r.owner_name}</td>
+                        <td style={{ padding: "0.9rem 1.25rem", color: C.text, fontSize: "0.88rem" }}>{r.county}</td>
+                        <td style={{ padding: "0.9rem 1.25rem", color: C.light, fontSize: "0.82rem" }}>{r.state}</td>
+                        <td style={{ padding: "0.9rem 1.25rem", color: "#fff", fontWeight: "bold", fontSize: "0.88rem" }}>{formatAmount(r.amount)}</td>
+                        <td style={{ padding: "0.9rem 1.25rem" }}><Badge status={r.status} /></td>
+                        <td style={{ padding: "0.9rem 1.25rem", color: C.muted, fontSize: "0.82rem" }}>{formatDate(r.created_at)}</td>
+                      </tr>
+                    )
                   })}
-                </tr>
-              </thead>
-              <tbody>
-                {claims.map(function(r, i) {
-                  return (
-                    <tr key={r.id} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}>
-                      <td style={{ padding: "0.9rem 1.25rem", color: C.gold, fontSize: "0.88rem", fontWeight: "bold" }}>{r.id}</td>
-                      <td style={{ padding: "0.9rem 1.25rem", color: C.text, fontSize: "0.88rem" }}>{r.owner}</td>
-                      <td style={{ padding: "0.9rem 1.25rem", color: C.light, fontSize: "0.82rem" }}>{r.county}</td>
-                      <td style={{ padding: "0.9rem 1.25rem", color: "#fff", fontWeight: "bold", fontSize: "0.88rem" }}>{r.amount}</td>
-                      <td style={{ padding: "0.9rem 1.25rem" }}><Badge status={r.status} /></td>
-                      <td style={{ padding: "0.9rem 1.25rem", color: C.muted, fontSize: "0.82rem" }}>{r.date}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
+
+        {modal === "newclaim" && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: "1rem" }} onClick={() => setModal(null)}>
+            <div style={{ background: C.card, border: "1px solid " + C.border, borderTop: "3px solid " + C.gold, borderRadius: "4px", padding: "2.25rem", width: "100%", maxWidth: "460px", position: "relative", maxHeight: "90vh", overflowY: "auto" }} onClick={function(e) { e.stopPropagation() }}>
+              <button onClick={() => setModal(null)} style={{ position: "absolute", top: "0.75rem", right: "1rem", background: "none", border: "none", color: C.muted, fontSize: "1.4rem", cursor: "pointer" }}>x</button>
+              <div style={{ fontSize: "0.68rem", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.4rem" }}>New Claim</div>
+              <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem", fontFamily: "Georgia, serif" }}>Add a Surplus Claim</div>
+              <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.75rem" }}>Enter the property owner and surplus details</div>
+
+              {claimError && (
+                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid " + C.red, borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: C.red }}>{claimError}</div>
+              )}
+
+              <form onSubmit={handleSaveClaim}>
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={labelStyle}>Owner Name *</label>
+                  <input style={inputStyle} placeholder="e.g. James Wilson" value={newClaim.owner_name} onChange={function(e) { setNewClaim({ ...newClaim, owner_name: e.target.value }) }} />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <div>
+                    <label style={labelStyle}>County *</label>
+                    <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="e.g. Cook County" value={newClaim.county} onChange={function(e) { setNewClaim({ ...newClaim, county: e.target.value }) }} />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>State *</label>
+                    <select style={{ ...inputStyle, marginBottom: 0 }} value={newClaim.state} onChange={function(e) { setNewClaim({ ...newClaim, state: e.target.value }) }}>
+                      <option value="">Select state</option>
+                      {US_STATES.map(function(s) { return <option key={s} value={s}>{s}</option> })}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "1rem" }}>
+                  <label style={labelStyle}>Surplus Amount</label>
+                  <input style={inputStyle} placeholder="e.g. 12400" value={newClaim.amount} onChange={function(e) { setNewClaim({ ...newClaim, amount: e.target.value }) }} />
+                </div>
+
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <label style={labelStyle}>Notes</label>
+                  <textarea style={{ ...inputStyle, marginBottom: 0, minHeight: "80px", resize: "vertical" }} placeholder="Any additional details about this claim..." value={newClaim.notes} onChange={function(e) { setNewClaim({ ...newClaim, notes: e.target.value }) }} />
+                </div>
+
+                <button type="submit" disabled={claimSaving} style={{ width: "100%", padding: "0.85rem", background: claimSaving ? C.muted : C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: claimSaving ? "not-allowed" : "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.9rem" }}>
+                  {claimSaving ? "Saving..." : "Save Claim"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -314,14 +437,10 @@ export default function App() {
                 <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.4rem", fontFamily: "Georgia, serif" }}>Reset Password</div>
                 <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.75rem" }}>Enter your email and we will send you a reset link</div>
                 {forgotSent ? (
-                  <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid " + C.green, borderRadius: "3px", padding: "0.75rem", fontSize: "0.83rem", color: C.green, marginBottom: "1rem" }}>
-                    Reset link sent! Check your email.
-                  </div>
+                  <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid " + C.green, borderRadius: "3px", padding: "0.75rem", fontSize: "0.83rem", color: C.green, marginBottom: "1rem" }}>Reset link sent! Check your email.</div>
                 ) : (
                   <form onSubmit={handleForgot}>
-                    {authError && (
-                      <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid " + C.red, borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: C.red }}>{authError}</div>
-                    )}
+                    {authError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid " + C.red, borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: C.red }}>{authError}</div>}
                     <input style={inputStyle} type="email" placeholder="Email Address" value={form.email} onChange={function(e) { setForm({ ...form, email: e.target.value }) }} required />
                     <button type="submit" disabled={loading} style={{ width: "100%", padding: "0.85rem", background: loading ? C.muted : C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: loading ? "not-allowed" : "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                       {loading ? "Sending..." : "Send Reset Link"}
@@ -334,21 +453,15 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.4rem", fontFamily: "Georgia, serif" }}>
-                  {mode === "login" ? "Welcome Back" : "Create Account"}
-                </div>
-                <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.75rem" }}>
-                  {mode === "login" ? "Sign in to your account" : "Start your free trial today"}
-                </div>
+                <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.4rem", fontFamily: "Georgia, serif" }}>{mode === "login" ? "Welcome Back" : "Create Account"}</div>
+                <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.75rem" }}>{mode === "login" ? "Sign in to your account" : "Start your free trial today"}</div>
                 {authError && (
                   <div style={{ background: authError.includes("Check your email") ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)", border: "1px solid " + (authError.includes("Check your email") ? C.green : C.red), borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: authError.includes("Check your email") ? C.green : C.red }}>
                     {authError}
                   </div>
                 )}
                 <form onSubmit={handleLogin}>
-                  {mode === "signup" && (
-                    <input style={inputStyle} placeholder="Full Name" value={form.name} onChange={function(e) { setForm({ ...form, name: e.target.value }) }} />
-                  )}
+                  {mode === "signup" && <input style={inputStyle} placeholder="Full Name" value={form.name} onChange={function(e) { setForm({ ...form, name: e.target.value }) }} />}
                   <input style={inputStyle} type="email" placeholder="Email Address" value={form.email} onChange={function(e) { setForm({ ...form, email: e.target.value }) }} required />
                   <input style={inputStyle} type="password" placeholder="Password" value={form.password} onChange={function(e) { setForm({ ...form, password: e.target.value }) }} required />
                   {mode === "login" && (

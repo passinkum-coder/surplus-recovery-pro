@@ -607,9 +607,9 @@ export default function App() {
 
         <button
           onClick={() => setChatOpen(!chatOpen)}
-          style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", width: "52px", height: "52px", borderRadius: "50%", background: C.gold, border: "none", cursor: "pointer", fontSize: "1.4rem", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(201,168,76,0.4)", zIndex: 300 }}
+          style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", width: "36px", height: "36px", borderRadius: "50%", background: C.gold, border: "none", cursor: "pointer", fontSize: "0.78rem", fontWeight: "bold", letterSpacing: "0.08em", fontFamily: "Georgia, serif", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(201,168,76,0.4)", zIndex: 300 }}
         >
-          {chatOpen ? "✕" : "💬"}
+          {chatOpen ? "✕" : "Chat"}
         </button>
       </div>
     )

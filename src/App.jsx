@@ -109,6 +109,11 @@ export default function App() {
   const [profileMsg, setProfileMsg] = useState("")
   const [profileSaving, setProfileSaving] = useState(false)
   const avatarRef = useRef(null)
+  const chatEndRef = useRef(null)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
 
   useEffect(function() {
     supabase.auth.getSession().then(function(result) {
@@ -133,6 +138,10 @@ export default function App() {
   useEffect(function() {
     if (page === "dashboard" && user) fetchClaims()
   }, [page, user])
+
+  useEffect(function() {
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: "smooth" })
+  }, [chatMessages])
 
   useEffect(function() {
     if (page === "profile" && user) {
@@ -246,6 +255,33 @@ export default function App() {
     await supabase.auth.signOut()
     setUser(null)
     setPage("home")
+  }
+
+  async function sendChat(e) {
+    e.preventDefault()
+    if (!chatInput.trim() || chatLoading) return
+    const userMsg = { role: "user", content: chatInput }
+    setChatMessages(function(prev) { return [...prev, userMsg] })
+    setChatInput("")
+    setChatLoading(true)
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: "You are a helpful assistant for SurplusRecoveryPro, a platform for surplus fund recovery professionals. Help users with questions about surplus funds, tax deeds, foreclosure overages, claim filing, skip tracing, and how to use the platform. Be concise and professional.",
+          messages: [...chatMessages, userMsg].map(function(m) { return { role: m.role, content: m.content } })
+        })
+      })
+      const data = await response.json()
+      const reply = data.content && data.content[0] && data.content[0].text ? data.content[0].text : "Sorry, I could not get a response."
+      setChatMessages(function(prev) { return [...prev, { role: "assistant", content: reply }] })
+    } catch(err) {
+      setChatMessages(function(prev) { return [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }] })
+    }
+    setChatLoading(false)
   }
 
   function openAuth(m) {
@@ -523,6 +559,58 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {chatOpen && (
+          <div style={{ position: "fixed", bottom: "80px", right: "1.5rem", width: "340px", height: "460px", background: C.card, border: "1px solid " + C.border, borderTop: "3px solid " + C.gold, borderRadius: "4px", zIndex: 300, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+            <div style={{ padding: "0.9rem 1.25rem", borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: "bold", color: "#fff", fontSize: "0.88rem", letterSpacing: "0.05em" }}>SRP Assistant</div>
+                <div style={{ fontSize: "0.7rem", color: C.gold, letterSpacing: "0.08em" }}>AI-POWERED SUPPORT</div>
+              </div>
+              <button onClick={() => setChatOpen(false)} style={{ background: "none", border: "none", color: C.muted, fontSize: "1.2rem", cursor: "pointer" }}>x</button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {chatMessages.length === 0 && (
+                <div style={{ textAlign: "center", color: C.muted, fontSize: "0.82rem", marginTop: "2rem", lineHeight: 1.6 }}>
+                  Hi {userName}! Ask me anything about surplus recovery, claims, or how to use the platform.
+                </div>
+              )}
+              {chatMessages.map(function(m, i) {
+                return (
+                  <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                    <div style={{ maxWidth: "80%", padding: "0.6rem 0.9rem", borderRadius: "4px", fontSize: "0.83rem", lineHeight: 1.5, background: m.role === "user" ? C.gold : "#162a52", color: m.role === "user" ? "#0a1628" : C.text, fontWeight: m.role === "user" ? "bold" : "normal" }}>
+                      {m.content}
+                    </div>
+                  </div>
+                )
+              })}
+              {chatLoading && (
+                <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                  <div style={{ background: "#162a52", padding: "0.6rem 0.9rem", borderRadius: "4px", fontSize: "0.83rem", color: C.muted }}>Thinking...</div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+            <form onSubmit={sendChat} style={{ padding: "0.75rem", borderTop: "1px solid " + C.border, display: "flex", gap: "0.5rem" }}>
+              <input
+                value={chatInput}
+                onChange={function(e) { setChatInput(e.target.value) }}
+                placeholder="Ask a question..."
+                style={{ flex: 1, padding: "0.6rem 0.75rem", background: "#071020", border: "1px solid " + C.border, borderRadius: "3px", color: C.text, fontSize: "0.83rem", fontFamily: "Georgia, serif", outline: "none" }}
+              />
+              <button type="submit" disabled={chatLoading} style={{ padding: "0.6rem 0.9rem", background: C.gold, border: "none", borderRadius: "3px", color: "#0a1628", fontWeight: "bold", cursor: chatLoading ? "not-allowed" : "pointer", fontSize: "0.82rem", fontFamily: "Georgia, serif" }}>
+                Send
+              </button>
+            </form>
+          </div>
+        )}
+
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", width: "52px", height: "52px", borderRadius: "50%", background: C.gold, border: "none", cursor: "pointer", fontSize: "1.4rem", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(201,168,76,0.4)", zIndex: 300 }}
+        >
+          {chatOpen ? "✕" : "💬"}
+        </button>
       </div>
     )
   }

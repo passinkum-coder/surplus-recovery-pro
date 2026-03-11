@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { createClient } from "@supabase/supabase-js"
 
 const supabase = createClient(
@@ -43,6 +43,15 @@ function Badge({ status }) {
     <span style={{ background: s.bg, color: s.c, padding: "0.2rem 0.6rem", borderRadius: "3px", fontSize: "0.72rem", fontWeight: "bold", letterSpacing: "0.05em", textTransform: "uppercase" }}>
       {status}
     </span>
+  )
+}
+
+function Avatar({ name, size = 36 }) {
+  const initials = name ? name.split(" ").map(function(w) { return w[0] }).join("").toUpperCase().slice(0, 2) : "?"
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: C.gold, color: "#0a1628", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: size * 0.38 + "px", fontFamily: "Georgia, serif", cursor: "pointer", flexShrink: 0 }}>
+      {initials}
+    </div>
   )
 }
 
@@ -95,6 +104,11 @@ export default function App() {
   const [newClaim, setNewClaim] = useState({ owner_name: "", county: "", state: "", amount: "", notes: "" })
   const [claimError, setClaimError] = useState("")
   const [claimSaving, setClaimSaving] = useState(false)
+  const [avatarOpen, setAvatarOpen] = useState(false)
+  const [profileForm, setProfileForm] = useState({ full_name: "", newPassword: "", confirmPassword: "" })
+  const [profileMsg, setProfileMsg] = useState("")
+  const [profileSaving, setProfileSaving] = useState(false)
+  const avatarRef = useRef(null)
 
   useEffect(function() {
     supabase.auth.getSession().then(function(result) {
@@ -117,17 +131,29 @@ export default function App() {
   }, [])
 
   useEffect(function() {
-    if (page === "dashboard" && user) {
-      fetchClaims()
-    }
+    if (page === "dashboard" && user) fetchClaims()
   }, [page, user])
+
+  useEffect(function() {
+    if (page === "profile" && user) {
+      setProfileForm({ full_name: userName || "", newPassword: "", confirmPassword: "" })
+      setProfileMsg("")
+    }
+  }, [page])
+
+  useEffect(function() {
+    function handleClick(e) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target)) {
+        setAvatarOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return function() { document.removeEventListener("mousedown", handleClick) }
+  }, [])
 
   async function fetchClaims() {
     setClaimsLoading(true)
-    const { data, error } = await supabase
-      .from("claims")
-      .select("*")
-      .order("created_at", { ascending: false })
+    const { data, error } = await supabase.from("claims").select("*").order("created_at", { ascending: false })
     if (!error && data) setClaims(data)
     setClaimsLoading(false)
   }
@@ -156,6 +182,36 @@ export default function App() {
       setModal(null)
       setNewClaim({ owner_name: "", county: "", state: "", amount: "", notes: "" })
       fetchClaims()
+    }
+  }
+
+  async function handleSaveProfile(e) {
+    e.preventDefault()
+    setProfileMsg("")
+    setProfileSaving(true)
+    if (profileForm.newPassword) {
+      if (profileForm.newPassword !== profileForm.confirmPassword) {
+        setProfileMsg("error:Passwords do not match.")
+        setProfileSaving(false)
+        return
+      }
+      if (profileForm.newPassword.length < 6) {
+        setProfileMsg("error:Password must be at least 6 characters.")
+        setProfileSaving(false)
+        return
+      }
+    }
+    const updates = {}
+    if (profileForm.full_name) updates.data = { full_name: profileForm.full_name }
+    if (profileForm.newPassword) updates.password = profileForm.newPassword
+    const { error } = await supabase.auth.updateUser(updates)
+    setProfileSaving(false)
+    if (error) {
+      setProfileMsg("error:" + error.message)
+    } else {
+      setProfileMsg("success:Profile updated successfully!")
+      setProfileForm(function(p) { return { ...p, newPassword: "", confirmPassword: "" } })
+      supabase.auth.getUser().then(function(result) { if (result.data.user) setUser(result.data.user) })
     }
   }
 
@@ -220,30 +276,146 @@ export default function App() {
   const userName = user && (user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email.split("@")[0])
 
   const totalRecovered = claims.reduce(function(sum, c) { return sum + (c.amount || 0) }, 0)
-  const activeClaims = claims.filter(function(c) { return c.status === "Active" }).length
   const pendingClaims = claims.filter(function(c) { return c.status === "Pending" }).length
-  const counties = new Set(claims.map(function(c) { return c.county + ", " + c.state })).size
+  const counties = new Set(claims.map(function(c) { return c.county + "," + c.state })).size
 
-  function formatAmount(n) {
-    if (!n) return "-"
-    return "$" + Number(n).toLocaleString()
-  }
+  function formatAmount(n) { return n ? "$" + Number(n).toLocaleString() : "-" }
+  function formatDate(d) { return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) }
 
-  function formatDate(d) {
-    return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  const DashNav = (
+    <div style={navStyle}>
+      <span style={{ color: C.gold, fontWeight: "bold", letterSpacing: "0.08em", cursor: "pointer", fontSize: "1.1rem" }} onClick={() => setPage("dashboard")}>SURPLUS RECOVERY PRO</span>
+      <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
+        <span style={{ color: C.muted, fontSize: "0.8rem", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <span style={{ color: C.gold }}>PROFESSIONAL</span>
+        </span>
+        <div ref={avatarRef} style={{ position: "relative" }}>
+          <div onClick={() => setAvatarOpen(!avatarOpen)}>
+            <Avatar name={userName} size={36} />
+          </div>
+          {avatarOpen && (
+            <div style={{ position: "absolute", right: 0, top: "46px", background: C.card, border: "1px solid " + C.border, borderRadius: "4px", minWidth: "180px", zIndex: 200, overflow: "hidden" }}>
+              <div style={{ padding: "0.85rem 1rem", borderBottom: "1px solid " + C.border }}>
+                <div style={{ fontSize: "0.88rem", fontWeight: "bold", color: "#fff" }}>{userName}</div>
+                <div style={{ fontSize: "0.75rem", color: C.muted, marginTop: "0.15rem" }}>{user && user.email}</div>
+              </div>
+              <div
+                onClick={() => { setPage("profile"); setAvatarOpen(false) }}
+                style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
+                onMouseEnter={function(e) { e.target.style.background = "#162a52" }}
+                onMouseLeave={function(e) { e.target.style.background = "transparent" }}
+              >
+                My Profile
+              </div>
+              <div
+                onClick={() => { setPage("dashboard"); setAvatarOpen(false) }}
+                style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
+                onMouseEnter={function(e) { e.target.style.background = "#162a52" }}
+                onMouseLeave={function(e) { e.target.style.background = "transparent" }}
+              >
+                Dashboard
+              </div>
+              <div
+                onClick={handleLogout}
+                style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.red }}
+                onMouseEnter={function(e) { e.target.style.background = "#162a52" }}
+                onMouseLeave={function(e) { e.target.style.background = "transparent" }}
+              >
+                Sign Out
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (page === "profile" && user) {
+    const isError = profileMsg.startsWith("error:")
+    const msgText = profileMsg.replace(/^(error:|success:)/, "")
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif" }}>
+        {DashNav}
+        <div style={{ maxWidth: "640px", margin: "0 auto", padding: "2.5rem 2rem" }}>
+          <div style={{ marginBottom: "2rem" }}>
+            <div style={{ fontSize: "0.7rem", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.4rem" }}>Account</div>
+            <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#fff" }}>My Profile</div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", background: C.card, border: "1px solid " + C.border, borderRadius: "4px", padding: "1.5rem", marginBottom: "1.5rem" }}>
+            <Avatar name={userName} size={56} />
+            <div>
+              <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#fff" }}>{userName}</div>
+              <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>{user.email}</div>
+              <div style={{ fontSize: "0.72rem", color: C.gold, marginTop: "0.3rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>Professional Plan</div>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveProfile}>
+            <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", padding: "1.5rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1.25rem" }}>Account Details</div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={labelStyle}>Full Name</label>
+                <input style={inputStyle} value={profileForm.full_name} onChange={function(e) { setProfileForm({ ...profileForm, full_name: e.target.value }) }} placeholder="Your full name" />
+              </div>
+              <div>
+                <label style={labelStyle}>Email Address</label>
+                <input style={{ ...inputStyle, opacity: 0.5, cursor: "not-allowed" }} value={user.email} disabled />
+                <div style={{ fontSize: "0.73rem", color: C.muted, marginTop: "-0.75rem", marginBottom: "1rem" }}>Email cannot be changed here</div>
+              </div>
+            </div>
+
+            <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", padding: "1.5rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1.25rem" }}>Change Password</div>
+              <div style={{ marginBottom: "1rem" }}>
+                <label style={labelStyle}>New Password</label>
+                <div style={{ position: "relative" }}>
+                  <input style={{ ...inputStyle, marginBottom: 0, paddingRight: "2.5rem" }} type={showPassword ? "text" : "password"} value={profileForm.newPassword} onChange={function(e) { setProfileForm({ ...profileForm, newPassword: e.target.value }) }} placeholder="Leave blank to keep current" />
+                  <span onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: C.muted, fontSize: "0.75rem" }}>{showPassword ? "HIDE" : "SHOW"}</span>
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Confirm New Password</label>
+                <input style={inputStyle} type="password" value={profileForm.confirmPassword} onChange={function(e) { setProfileForm({ ...profileForm, confirmPassword: e.target.value }) }} placeholder="Repeat new password" />
+              </div>
+            </div>
+
+            <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", padding: "1.5rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1rem" }}>Current Plan</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: C.gold }}>Professional</div>
+                  <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>$149/month - Multi-county access, skip tracing, priority support</div>
+                </div>
+                <button type="button" onClick={() => { setPage("home"); setTimeout(function() { document.getElementById("pricing") && document.getElementById("pricing").scrollIntoView({ behavior: "smooth" }) }, 100) }} style={{ padding: "0.55rem 1.2rem", border: "1px solid " + C.gold, borderRadius: "3px", background: "transparent", color: C.gold, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.8rem", letterSpacing: "0.06em", fontWeight: "bold" }}>UPGRADE PLAN</button>
+              </div>
+            </div>
+
+            <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", padding: "1.5rem", marginBottom: "1.5rem" }}>
+              <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1rem" }}>Billing History</div>
+              <div style={{ color: C.muted, fontSize: "0.85rem" }}>No billing history yet. Billing history will appear here once Stripe payments are connected.</div>
+            </div>
+
+            {profileMsg && (
+              <div style={{ background: isError ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)", border: "1px solid " + (isError ? C.red : C.green), borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: isError ? C.red : C.green }}>
+                {msgText}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button type="button" onClick={() => setPage("dashboard")} style={{ flex: 1, padding: "0.85rem", background: "transparent", color: C.light, border: "1px solid " + C.border, borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.9rem" }}>Cancel</button>
+              <button type="submit" disabled={profileSaving} style={{ flex: 2, padding: "0.85rem", background: profileSaving ? C.muted : C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: profileSaving ? "not-allowed" : "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.9rem" }}>{profileSaving ? "Saving..." : "Save Changes"}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
   }
 
   if (page === "dashboard" && user) {
     return (
       <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif" }}>
-        <div style={navStyle}>
-          <span style={{ color: C.gold, fontWeight: "bold", letterSpacing: "0.08em", cursor: "pointer", fontSize: "1.1rem" }} onClick={() => setPage("home")}>SURPLUS RECOVERY PRO</span>
-          <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-            <span style={{ color: C.muted, fontSize: "0.82rem", letterSpacing: "0.05em" }}>{userName && userName.toUpperCase()} - <span style={{ color: C.gold }}>PROFESSIONAL</span></span>
-            <button onClick={handleLogout} style={{ padding: "0.35rem 0.9rem", border: "1px solid " + C.border, borderRadius: "3px", background: "none", color: C.light, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.8rem", letterSpacing: "0.05em" }}>SIGN OUT</button>
-          </div>
-        </div>
-
+        {DashNav}
         <div style={{ padding: "2rem 2.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
             <div>
@@ -273,7 +445,7 @@ export default function App() {
           <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", overflow: "hidden" }}>
             <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: "bold", color: "#fff", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your Claims</span>
-              <span style={{ fontSize: "0.78rem", color: C.gold, cursor: "pointer", letterSpacing: "0.05em" }}>{claims.length} TOTAL</span>
+              <span style={{ fontSize: "0.78rem", color: C.gold, letterSpacing: "0.05em" }}>{claims.length} TOTAL</span>
             </div>
             {claimsLoading ? (
               <div style={{ padding: "2rem", textAlign: "center", color: C.muted }}>Loading claims...</div>
@@ -317,17 +489,12 @@ export default function App() {
               <div style={{ fontSize: "0.68rem", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.4rem" }}>New Claim</div>
               <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem", fontFamily: "Georgia, serif" }}>Add a Surplus Claim</div>
               <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.75rem" }}>Enter the property owner and surplus details</div>
-
-              {claimError && (
-                <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid " + C.red, borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: C.red }}>{claimError}</div>
-              )}
-
+              {claimError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid " + C.red, borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: C.red }}>{claimError}</div>}
               <form onSubmit={handleSaveClaim}>
                 <div style={{ marginBottom: "1rem" }}>
                   <label style={labelStyle}>Owner Name *</label>
                   <input style={inputStyle} placeholder="e.g. James Wilson" value={newClaim.owner_name} onChange={function(e) { setNewClaim({ ...newClaim, owner_name: e.target.value }) }} />
                 </div>
-
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                   <div>
                     <label style={labelStyle}>County *</label>
@@ -341,17 +508,14 @@ export default function App() {
                     </select>
                   </div>
                 </div>
-
                 <div style={{ marginBottom: "1rem" }}>
                   <label style={labelStyle}>Surplus Amount</label>
                   <input style={inputStyle} placeholder="e.g. 12400" value={newClaim.amount} onChange={function(e) { setNewClaim({ ...newClaim, amount: e.target.value }) }} />
                 </div>
-
                 <div style={{ marginBottom: "1.5rem" }}>
                   <label style={labelStyle}>Notes</label>
-                  <textarea style={{ ...inputStyle, marginBottom: 0, minHeight: "80px", resize: "vertical" }} placeholder="Any additional details about this claim..." value={newClaim.notes} onChange={function(e) { setNewClaim({ ...newClaim, notes: e.target.value }) }} />
+                  <textarea style={{ ...inputStyle, marginBottom: 0, minHeight: "80px", resize: "vertical" }} placeholder="Any additional details..." value={newClaim.notes} onChange={function(e) { setNewClaim({ ...newClaim, notes: e.target.value }) }} />
                 </div>
-
                 <button type="submit" disabled={claimSaving} style={{ width: "100%", padding: "0.85rem", background: claimSaving ? C.muted : C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: claimSaving ? "not-allowed" : "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.9rem" }}>
                   {claimSaving ? "Saving..." : "Save Claim"}
                 </button>
@@ -432,7 +596,6 @@ export default function App() {
           <div style={{ background: C.card, border: "1px solid " + C.border, borderTop: "3px solid " + C.gold, borderRadius: "4px", padding: "2.25rem", width: "100%", maxWidth: "380px", position: "relative" }} onClick={function(e) { e.stopPropagation() }}>
             <button onClick={() => { setModal(null); setForgotSent(false) }} style={{ position: "absolute", top: "0.75rem", right: "1rem", background: "none", border: "none", color: C.muted, fontSize: "1.4rem", cursor: "pointer" }}>x</button>
             <div style={{ fontSize: "0.68rem", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.4rem" }}>SurplusRecoveryPro</div>
-
             {mode === "forgot" ? (
               <div>
                 <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.4rem", fontFamily: "Georgia, serif" }}>Reset Password</div>
@@ -464,9 +627,12 @@ export default function App() {
                 <form onSubmit={handleLogin}>
                   {mode === "signup" && <input style={inputStyle} placeholder="Full Name" value={form.name} onChange={function(e) { setForm({ ...form, name: e.target.value }) }} />}
                   <input style={inputStyle} type="email" placeholder="Email Address" value={form.email} onChange={function(e) { setForm({ ...form, email: e.target.value }) }} required />
-                  <div style={{ position: "relative", marginBottom: "1rem" }}><input style={{ ...inputStyle, marginBottom: 0, paddingRight: "2.5rem" }} type={showPassword ? "text" : "password"} placeholder="Password" value={form.password} onChange={function(e) { setForm({ ...form, password: e.target.value }) }} required /><span onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: C.muted, fontSize: "0.85rem", userSelect: "none" }}>{showPassword ? "HIDE" : "SHOW"}</span></div>
+                  <div style={{ position: "relative", marginBottom: "1rem" }}>
+                    <input style={{ ...inputStyle, marginBottom: 0, paddingRight: "2.5rem" }} type={showPassword ? "text" : "password"} placeholder="Password" value={form.password} onChange={function(e) { setForm({ ...form, password: e.target.value }) }} required />
+                    <span onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", cursor: "pointer", color: C.muted, fontSize: "0.75rem", userSelect: "none" }}>{showPassword ? "HIDE" : "SHOW"}</span>
+                  </div>
                   {mode === "login" && (
-                    <div style={{ textAlign: "right", marginTop: "-0.5rem", marginBottom: "1rem" }}>
+                    <div style={{ textAlign: "right", marginBottom: "1rem" }}>
                       <span style={{ fontSize: "0.8rem", color: C.gold, cursor: "pointer" }} onClick={() => { setMode("forgot"); setAuthError("") }}>Forgot password?</span>
                     </div>
                   )}

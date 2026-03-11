@@ -573,7 +573,7 @@ export default function App() {
         </div>
         <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", padding: "2rem", marginTop: "2rem" }}>
           <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#fff", marginBottom: "0.3rem", fontFamily: "Georgia, serif" }}>Add-on Services</div>
-          <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.5rem" }}>Basic Membership required</div>
+          <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.5rem" }}>Membership required</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "0.85rem" }}>
             {addons.map(function(a) {
               return (

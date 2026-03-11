@@ -586,7 +586,7 @@ export default function App() {
               })}
               {chatLoading && (
                 <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                  <div style={{ background: "#162a52", padding: "0.6rem 0.9rem", borderRadius: "4px", fontSize: "0.83rem", color: C.muted }}>Thinking...</div>
+                  <div style={{ background: "#162a52", padding: "0.6rem 0.9rem", borderRadius: "4px", fontSize: "0.83rem", color: C.muted }}>...</div>
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -607,9 +607,11 @@ export default function App() {
 
         <button
           onClick={() => setChatOpen(!chatOpen)}
-          style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", width: "36px", height: "36px", borderRadius: "50%", background: C.gold, border: "none", cursor: "pointer", fontSize: "0.78rem", fontWeight: "bold", letterSpacing: "0.08em", fontFamily: "Georgia, serif", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(201,168,76,0.4)", zIndex: 300 }}
+          style={{ position: "fixed", bottom: "1.5rem", right: "1.5rem", width: "52px", height: "52px", borderRadius: "50% 50% 50% 0", background: C.gold, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(201,168,76,0.4)", zIndex: 300, transform: "rotate(-45deg)" }}
         >
-          {chatOpen ? "✕" : "Chat"}
+          <div style={{ transform: "rotate(45deg)", display: "flex", gap: "3px", alignItems: "center" }}>
+            {chatOpen ? <span style={{ fontSize: "1rem", color: "#0a1628", fontWeight: "bold", lineHeight: 1 }}>✕</span> : [<span key="1" style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#0a1628", display: "inline-block" }}></span>, <span key="2" style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#0a1628", display: "inline-block" }}></span>, <span key="3" style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#0a1628", display: "inline-block" }}></span>]}
+          </div>
         </button>
       </div>
     )

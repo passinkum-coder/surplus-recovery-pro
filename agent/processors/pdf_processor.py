@@ -1,3 +1,10 @@
+import pdfplumber
+import requests
+import re
+import logging
+
+logger = logging.getLogger(__name__)
+
 def parse_amount(value):
     """Convert a string like '$1,234.56' to float 1234.56"""
     if not value:

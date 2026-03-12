@@ -105,6 +105,7 @@ export default function App() {
   const [claimError, setClaimError] = useState("")
   const [claimSaving, setClaimSaving] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
+  const [pendingCheckout, setPendingCheckout] = useState(null)
   const [profileForm, setProfileForm] = useState({ full_name: "", newPassword: "", confirmPassword: "" })
   const [profileMsg, setProfileMsg] = useState("")
   const [profileSaving, setProfileSaving] = useState(false)
@@ -243,8 +244,8 @@ export default function App() {
       })
       if (error) { setAuthError(error.message) } else { setAuthError("Check your email to confirm your account!") }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
-      if (error) { setAuthError(error.message) } else { setModal(null) }
+      const { data, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
+      if (error) { setAuthError(error.message) } else { setModal(null); if (pendingCheckout) { handleCheckout(pendingCheckout.priceId, pendingCheckout.mode); setPendingCheckout(null) } }
     }
     setLoading(false)
   }
@@ -292,7 +293,7 @@ export default function App() {
   }
 
   async function handleCheckout(priceId, mode) {
-    if (!user) { openAuth("signup"); return }
+    if (!user) { setPendingCheckout({ priceId, mode }); openAuth("signup"); return }
     try {
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
@@ -361,32 +362,24 @@ export default function App() {
               <div
                 onClick={() => { setPage("profile"); setAvatarOpen(false) }}
                 style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
-                onMouseEnter={function(e) { e.target.style.background = "#162a52" }}
-                onMouseLeave={function(e) { e.target.style.background = "transparent" }}
+                onMouseEnter={function(e) { e.currentTarget.style.background = "#162a52" }}
+                onMouseLeave={function(e) { e.currentTarget.style.background = "transparent" }}
               >
                 My Profile
               </div>
               <div
-                onClick={() => { setPage("pricing"); setAvatarOpen(false) }}
-                style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
-                onMouseEnter={function(e) { e.target.style.background = "#162a52" }}
-                onMouseLeave={function(e) { e.target.style.background = "transparent" }}
-              >
-                View Plans
-              </div>
-              <div
-                onClick={() => { setPage("dashboard"); setAvatarOpen(false) }}
+                onClick={() => { setPage("addons"); setAvatarOpen(false) }}
                 style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
                 onMouseEnter={function(e) { e.currentTarget.style.background = "#162a52" }}
                 onMouseLeave={function(e) { e.currentTarget.style.background = "transparent" }}
               >
-                Dashboard
+                Add-Ons
               </div>
               <div
                 onClick={handleLogout}
                 style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.red }}
-                onMouseEnter={function(e) { e.target.style.background = "#162a52" }}
-                onMouseLeave={function(e) { e.target.style.background = "transparent" }}
+                onMouseEnter={function(e) { e.currentTarget.style.background = "#162a52" }}
+                onMouseLeave={function(e) { e.currentTarget.style.background = "transparent" }}
               >
                 Sign Out
               </div>
@@ -396,6 +389,36 @@ export default function App() {
       </div>
     </div>
   )
+
+  if (page === "addons" && user) {
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif" }}>
+        {DashNav}
+        <div style={{ maxWidth: "900px", margin: "0 auto", padding: "2.5rem 2rem" }}>
+          <div style={{ marginBottom: "2rem" }}>
+            <div style={{ fontSize: "0.7rem", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.4rem" }}>Services</div>
+            <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#fff" }}>Add-On Services</div>
+            <div style={{ fontSize: "0.85rem", color: C.muted, marginTop: "0.4rem" }}>Click any service to purchase</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1.25rem" }}>
+            {addons.map(function(a) {
+              return (
+                <div key={a.name} onClick={() => handleCheckout(a.priceId, a.mode)}
+                  style={{ background: C.card, border: "1px solid " + C.border, borderTop: "3px solid " + C.gold, borderRadius: "4px", padding: "1.5rem", cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={function(e) { e.currentTarget.style.background = "#162a52" }}
+                  onMouseLeave={function(e) { e.currentTarget.style.background = C.card }}
+                >
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff", marginBottom: "0.5rem" }}>{a.name}</div>
+                  <div style={{ fontSize: "1.4rem", color: C.gold, fontWeight: "bold", marginBottom: "0.4rem" }}>{a.price}</div>
+                  <div style={{ fontSize: "0.75rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Click to purchase →</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (page === "pricing" && user) {
     return (

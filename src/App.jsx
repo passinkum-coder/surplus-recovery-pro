@@ -151,43 +151,7 @@ export default function App() {
   }, [chatMessages])
 
   useEffect(function() {
-    if (page === "pricing" && user) {
-    return (
-      <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif" }}>
-        {DashNav}
-        <div style={{ maxWidth: "1080px", margin: "0 auto", padding: "3rem 2rem" }}>
-          <div style={{ fontSize: "0.7rem", textAlign: "center", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.5rem" }}>Pricing Plans</div>
-          <div style={{ fontSize: "1.9rem", fontWeight: "bold", textAlign: "center", color: "#fff", marginBottom: "0.6rem" }}>Choose Your Plan</div>
-          <div style={{ textAlign: "center", color: C.light, marginBottom: "2.5rem", fontSize: "0.92rem" }}>Click any plan to subscribe</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
-            {tiers.map(function(t) {
-              return <PricingCard key={t.name} t={t} hoveredTier={hoveredTier} setHoveredTier={setHoveredTier} onGetStarted={() => handleCheckout(t.priceId, "subscription")} onCheckout={() => handleCheckout(t.priceId, "subscription")} />
-            })}
-          </div>
-          <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", padding: "2rem" }}>
-            <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#fff", marginBottom: "0.3rem" }}>Add-on Services</div>
-            <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.5rem" }}>Membership required</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "0.85rem" }}>
-              {addons.map(function(a) {
-                return (
-                  <div key={a.name} onClick={() => handleCheckout(a.priceId, a.mode)} style={{ background: C.bg, border: "1px solid " + C.border, borderRadius: "3px", padding: "0.9rem", cursor: "pointer", transition: "border-color 0.2s" }}
-                    onMouseEnter={function(e) { e.currentTarget.style.borderColor = C.gold }}
-                    onMouseLeave={function(e) { e.currentTarget.style.borderColor = C.border }}
-                  >
-                    <div style={{ fontSize: "0.83rem", color: C.light, marginBottom: "0.35rem" }}>{a.name}</div>
-                    <div style={{ fontSize: "1rem", color: C.gold, fontWeight: "bold" }}>{a.price}</div>
-                    <div style={{ fontSize: "0.7rem", color: C.muted, marginTop: "0.3rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Click to purchase</div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (page === "profile" && user) {
+    if (page === "profile" && user) {
       setProfileForm({ full_name: userName || "", newPassword: "", confirmPassword: "" })
       setProfileMsg("")
     }

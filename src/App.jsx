@@ -375,6 +375,16 @@ export default function App() {
               >
                 Add-Ons
               </div>
+              {page !== "dashboard" && (
+                <div
+                  onClick={() => { setPage("dashboard"); setAvatarOpen(false) }}
+                  style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
+                  onMouseEnter={function(e) { e.currentTarget.style.background = "#162a52" }}
+                  onMouseLeave={function(e) { e.currentTarget.style.background = "transparent" }}
+                >
+                  Dashboard
+                </div>
+              )}
               <div
                 onClick={handleLogout}
                 style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.red }}

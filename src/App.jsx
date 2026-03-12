@@ -523,7 +523,7 @@ export default function App() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem" }}>Welcome back, {userName}</div>
-              <div style={{ color: C.muted, fontSize: "0.8rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Surplus Recovery Dashboard - Professional Plan</div>
+              <div style={{ color: C.muted, fontSize: "0.8rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Surplus Recovery Dashboard</div>
             </div>
             <button onClick={() => { setClaimError(""); setModal("newclaim") }} style={{ padding: "0.65rem 1.4rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.06em", fontSize: "0.85rem" }}>+ NEW CLAIM</button>
           </div>

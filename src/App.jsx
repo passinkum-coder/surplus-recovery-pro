@@ -302,9 +302,9 @@ export default function App() {
       })
       const data = await response.json()
       if (data.url) { window.location.href = data.url }
-      else { alert("Something went wrong. Please try again.") }
+      else { alert("Error: " + (data.error || "Something went wrong")) }
     } catch (err) {
-      alert("Something went wrong. Please try again.")
+      alert("Error: " + err.message)
     }
   }
 

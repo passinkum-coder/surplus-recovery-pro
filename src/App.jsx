@@ -367,6 +367,14 @@ export default function App() {
                 My Profile
               </div>
               <div
+                onClick={() => { setPage("home"); setAvatarOpen(false) }}
+                style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
+                onMouseEnter={function(e) { e.target.style.background = "#162a52" }}
+                onMouseLeave={function(e) { e.target.style.background = "transparent" }}
+              >
+                View Plans
+              </div>
+              <div
                 onClick={() => { setPage("dashboard"); setAvatarOpen(false) }}
                 style={{ padding: "0.75rem 1rem", cursor: "pointer", fontSize: "0.85rem", color: C.light, borderBottom: "1px solid " + C.border }}
                 onMouseEnter={function(e) { e.target.style.background = "#162a52" }}

@@ -100,6 +100,7 @@ export default function App() {
   const [forgotSent, setForgotSent] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [claims, setClaims] = useState([])
+  const [purchases, setPurchases] = useState([])
   const [claimsLoading, setClaimsLoading] = useState(false)
   const [newClaim, setNewClaim] = useState({ owner_name: "", county: "", state: "", amount: "", notes: "" })
   const [claimError, setClaimError] = useState("")
@@ -144,7 +145,7 @@ export default function App() {
   }, [])
 
   useEffect(function() {
-    if (page === "dashboard" && user) fetchClaims()
+    if (page === "dashboard" && user) { fetchClaims(); fetchPurchases() }
   }, [page, user])
 
   useEffect(function() {
@@ -173,6 +174,11 @@ export default function App() {
     const { data, error } = await supabase.from("claims").select("*").order("created_at", { ascending: false })
     if (!error && data) setClaims(data)
     setClaimsLoading(false)
+  }
+
+  async function fetchPurchases() {
+    const { data, error } = await supabase.from("purchases").select("*").order("created_at", { ascending: false })
+    if (!error && data) setPurchases(data)
   }
 
   async function handleSaveClaim(e) {
@@ -617,6 +623,36 @@ export default function App() {
             )}
           </div>
         </div>
+
+        {purchases.length > 0 && (
+          <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "4px", overflow: "hidden", marginTop: "1.5rem" }}>
+            <div style={{ padding: "1rem 1.5rem", borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: "bold", color: "#fff", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your Add-Ons</span>
+              <span style={{ fontSize: "0.78rem", color: C.gold, letterSpacing: "0.05em" }}>{purchases.length} PURCHASED</span>
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#071020" }}>
+                  {["Service", "Amount", "Type", "Date"].map(function(h) {
+                    return <th key={h} style={{ padding: "0.7rem 1.25rem", textAlign: "left", fontSize: "0.68rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.12em", borderBottom: "1px solid " + C.border }}>{h}</th>
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {purchases.map(function(p, i) {
+                  return (
+                    <tr key={p.id} style={{ background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)" }}>
+                      <td style={{ padding: "0.9rem 1.25rem", color: C.gold, fontSize: "0.88rem", fontWeight: "bold" }}>{p.product_name}</td>
+                      <td style={{ padding: "0.9rem 1.25rem", color: "#fff", fontWeight: "bold", fontSize: "0.88rem" }}>{p.amount ? "$" + Number(p.amount).toLocaleString() : "-"}</td>
+                      <td style={{ padding: "0.9rem 1.25rem", color: C.light, fontSize: "0.82rem", textTransform: "capitalize" }}>{p.mode}</td>
+                      <td style={{ padding: "0.9rem 1.25rem", color: C.muted, fontSize: "0.82rem" }}>{new Date(p.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {modal === "newclaim" && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: "1rem" }} onClick={() => setModal(null)}>

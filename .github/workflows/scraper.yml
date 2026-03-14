@@ -1,5 +1,4 @@
 name: Surplus Funds Scraper
-
 on:
   schedule:
     - cron: '0 6 * * 1'

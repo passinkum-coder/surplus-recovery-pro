@@ -110,6 +110,7 @@ export default function App() {
   const [claimSaving, setClaimSaving] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [pendingCheckout, setPendingCheckout] = useState(null)
+  const pendingCheckoutRef = useRef(null)
   const [profileForm, setProfileForm] = useState({ full_name: "", newPassword: "", confirmPassword: "" })
   const [profileMsg, setProfileMsg] = useState("")
   const [profileSaving, setProfileSaving] = useState(false)
@@ -150,7 +151,21 @@ export default function App() {
         if (session) setUser(session.user)
       } else if (event === 'SIGNED_IN' && session) {
         setUser(session.user)
-        setPage("dashboard")
+        if (pendingCheckoutRef.current) {
+          const { priceId, mode } = pendingCheckoutRef.current
+          pendingCheckoutRef.current = null
+          setPendingCheckout(null)
+          setModal(null)
+          fetch('/api/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ priceId, mode, userId: session.user.id, userEmail: session.user.email })
+          }).then(function(r) { return r.json() }).then(function(data) {
+            if (data.url) { window.location.href = data.url } else { setPage('dashboard') }
+          }).catch(function() { setPage('dashboard') })
+        } else {
+          setPage('dashboard')
+        }
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setPage("home")
@@ -264,7 +279,7 @@ export default function App() {
         password: form.password,
         options: { data: { full_name: form.name } }
       })
-      if (error) { setAuthError(error.message) } else { setModal(null); if (pendingCheckout) { handleCheckout(pendingCheckout.priceId, pendingCheckout.mode); setPendingCheckout(null) } }
+      if (error) { setAuthError(error.message) }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
       if (error) { setAuthError(error.message) } else { setModal(null); if (pendingCheckout) { handleCheckout(pendingCheckout.priceId, pendingCheckout.mode); setPendingCheckout(null) } }
@@ -389,7 +404,7 @@ export default function App() {
   }
 
   async function handleCheckout(priceId, mode) {
-    if (!user) { setPendingCheckout({ priceId, mode }); openAuth("signup"); return }
+    if (!user) { const pc = { priceId, mode }; setPendingCheckout(pc); pendingCheckoutRef.current = pc; openAuth("signup"); return }
     try {
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",

@@ -119,6 +119,11 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
+  const [claimPackageModal, setClaimPackageModal] = useState(null)
+  const [claimantForm, setClaimantForm] = useState({ name: "", address: "", email: "", phone: "", type: "Owner" })
+  const [claimPackageLoading, setClaimPackageLoading] = useState(false)
+  const [claimPackageResult, setClaimPackageResult] = useState(null)
+  const [claimPackageError, setClaimPackageError] = useState("")
 
   useEffect(function() {
     const params = new URLSearchParams(window.location.search)
@@ -287,6 +292,72 @@ export default function App() {
     const { error } = await supabase.auth.updateUser({ password: resetPassword })
     if (error) { setResetMsg("error:" + error.message) } 
     else { setResetMsg("success:Password updated! You can now log in."); setResetMode(false); setResetPassword('') }
+  }
+
+  async function handleGenerateClaim(e) {
+    e.preventDefault()
+    setClaimPackageError("")
+    setClaimPackageResult(null)
+    setClaimPackageLoading(true)
+    try {
+      const response = await fetch("/api/generate-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          case_id: claimPackageModal.id,
+          county: claimPackageModal.county,
+          property_address: claimPackageModal.notes || "",
+          surplus_amount: claimPackageModal.amount,
+          parcel_id: claimPackageModal.parcel_id || "",
+          sale_date: claimPackageModal.created_at,
+          owner_name: claimPackageModal.owner_name,
+          claimant_name: claimantForm.name,
+          claimant_address: claimantForm.address,
+          claimant_email: claimantForm.email,
+          claimant_phone: claimantForm.phone,
+          claimant_type: claimantForm.type,
+          user_id: user.id
+        })
+      })
+      const data = await response.json()
+      if (data.error) {
+        setClaimPackageError(data.error)
+        setClaimPackageLoading(false)
+        return
+      }
+      if (data.package_id) {
+        // Poll Supabase until pdf_url is populated
+        let attempts = 0
+        const maxAttempts = 30
+        const poll = async () => {
+          attempts++
+          const { data: pkg } = await supabase
+            .from("claim_packages")
+            .select("pdf_url, status")
+            .eq("id", data.package_id)
+            .single()
+          if (pkg && pkg.pdf_url) {
+            setClaimPackageResult(pkg.pdf_url)
+            setClaimPackageLoading(false)
+          } else if (pkg && pkg.status === "error") {
+            setClaimPackageError("Package generation failed. Please try again.")
+            setClaimPackageLoading(false)
+          } else if (attempts >= maxAttempts) {
+            setClaimPackageError("Timed out waiting for package. Please try again.")
+            setClaimPackageLoading(false)
+          } else {
+            setTimeout(poll, 3000)
+          }
+        }
+        setTimeout(poll, 3000)
+      } else {
+        setClaimPackageError("Unexpected response. Please try again.")
+        setClaimPackageLoading(false)
+      }
+    } catch (err) {
+      setClaimPackageError("Error: " + err.message)
+      setClaimPackageLoading(false)
+    }
   }
 
   async function sendChat(e) {
@@ -601,6 +672,7 @@ export default function App() {
   if (page === "dashboard" && user) {
     return (
       <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif" }}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         {DashNav}
         <div style={{ padding: "2rem 2.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
@@ -644,7 +716,7 @@ export default function App() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#071020" }}>
-                    {["Owner", "County", "State", "Amount", "Status", "Date Added"].map(function(h) {
+                    {["Owner", "County", "State", "Amount", "Status", "Date Added", ""].map(function(h) {
                       return <th key={h} style={{ padding: "0.7rem 1.25rem", textAlign: "left", fontSize: "0.68rem", color: C.muted, textTransform: "uppercase", letterSpacing: "0.12em", borderBottom: "1px solid " + C.border }}>{h}</th>
                     })}
                   </tr>
@@ -659,6 +731,14 @@ export default function App() {
                         <td style={{ padding: "0.9rem 1.25rem", color: "#fff", fontWeight: "bold", fontSize: "0.88rem" }}>{formatAmount(r.amount)}</td>
                         <td style={{ padding: "0.9rem 1.25rem" }}><Badge status={r.status} /></td>
                         <td style={{ padding: "0.9rem 1.25rem", color: C.muted, fontSize: "0.82rem" }}>{formatDate(r.created_at)}</td>
+                        <td style={{ padding: "0.9rem 1.25rem" }}>
+                          <button
+                            onClick={() => { setClaimPackageModal(r); setClaimantForm({ name: "", address: "", email: "", phone: "", type: "Owner" }); setClaimPackageResult(null); setClaimPackageError("") }}
+                            style={{ padding: "0.35rem 0.85rem", background: "transparent", border: "1px solid " + C.gold, borderRadius: "3px", color: C.gold, fontSize: "0.72rem", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap" }}
+                          >
+                            Generate Package
+                          </button>
+                        </td>
                       </tr>
                     )
                   })}
@@ -695,6 +775,70 @@ export default function App() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {claimPackageModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: "1rem" }} onClick={() => { setClaimPackageModal(null); setClaimPackageResult(null) }}>
+            <div style={{ background: C.card, border: "1px solid " + C.border, borderTop: "3px solid " + C.gold, borderRadius: "4px", padding: "2.25rem", width: "100%", maxWidth: "480px", position: "relative", maxHeight: "90vh", overflowY: "auto" }} onClick={function(e) { e.stopPropagation() }}>
+              <button onClick={() => { setClaimPackageModal(null); setClaimPackageResult(null) }} style={{ position: "absolute", top: "0.75rem", right: "1rem", background: "none", border: "none", color: C.muted, fontSize: "1.4rem", cursor: "pointer" }}>x</button>
+              <div style={{ fontSize: "0.68rem", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.4rem" }}>Claim Package</div>
+              <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem", fontFamily: "Georgia, serif" }}>Generate Claim Package</div>
+              <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "0.75rem" }}>For: {claimPackageModal.owner_name} — {claimPackageModal.county}, {claimPackageModal.state}</div>
+              <div style={{ background: "rgba(201,168,76,0.07)", border: "1px solid " + C.border, borderRadius: "3px", padding: "0.6rem 0.9rem", marginBottom: "1.5rem", fontSize: "0.8rem", color: C.light }}>
+                Amount: <strong style={{ color: C.gold }}>{formatAmount(claimPackageModal.amount)}</strong>
+              </div>
+
+              {claimPackageResult ? (
+                <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                  <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>✅</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: C.green, marginBottom: "0.5rem", fontFamily: "Georgia, serif" }}>Your claim package is ready!</div>
+                  <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.5rem" }}>Click below to download your documents.</div>
+                  <a href={claimPackageResult} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", padding: "0.8rem 2rem", background: C.gold, color: "#0a1628", borderRadius: "3px", fontWeight: "bold", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textDecoration: "none", textTransform: "uppercase", fontSize: "0.85rem" }}>
+                    Download Package
+                  </a>
+                </div>
+              ) : (
+                <form onSubmit={handleGenerateClaim}>
+                  {claimPackageError && <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid " + C.red, borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: C.red }}>{claimPackageError}</div>}
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={labelStyle}>Claimant Name *</label>
+                    <input style={inputStyle} placeholder="Full legal name" value={claimantForm.name} onChange={function(e) { setClaimantForm({ ...claimantForm, name: e.target.value }) }} required />
+                  </div>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={labelStyle}>Claimant Address *</label>
+                    <input style={inputStyle} placeholder="Street, City, State, ZIP" value={claimantForm.address} onChange={function(e) { setClaimantForm({ ...claimantForm, address: e.target.value }) }} required />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                    <div>
+                      <label style={labelStyle}>Email *</label>
+                      <input style={{ ...inputStyle, marginBottom: 0 }} type="email" placeholder="email@example.com" value={claimantForm.email} onChange={function(e) { setClaimantForm({ ...claimantForm, email: e.target.value }) }} required />
+                    </div>
+                    <div>
+                      <label style={labelStyle}>Phone</label>
+                      <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="(555) 000-0000" value={claimantForm.phone} onChange={function(e) { setClaimantForm({ ...claimantForm, phone: e.target.value }) }} />
+                    </div>
+                  </div>
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <label style={labelStyle}>Claimant Type *</label>
+                    <select style={inputStyle} value={claimantForm.type} onChange={function(e) { setClaimantForm({ ...claimantForm, type: e.target.value }) }} required>
+                      <option value="Owner">Owner</option>
+                      <option value="Heir">Heir</option>
+                      <option value="Investor">Investor</option>
+                      <option value="Agent">Agent</option>
+                    </select>
+                  </div>
+                  <button type="submit" disabled={claimPackageLoading} style={{ width: "100%", padding: "0.85rem", background: claimPackageLoading ? C.muted : C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: claimPackageLoading ? "not-allowed" : "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+                    {claimPackageLoading ? (
+                      <>
+                        <span style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid #0a1628", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }}></span>
+                        Generating... this may take a moment
+                      </>
+                    ) : "Generate Claim Package"}
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         )}
 
@@ -922,5 +1066,7 @@ export default function App() {
         </div>
       )}
     </div>
+  )
+}
   )
 }

@@ -130,9 +130,10 @@ export default function App() {
     if (params.get('success') === 'true') {
       window.history.replaceState({}, '', '/')
     }
-    if (params.get('reset') === 'true') {
+    // Let Supabase read hash tokens before clearing - recovery handled by onAuthStateChange
+    const hash = window.location.hash
+    if (hash && hash.includes('type=recovery')) {
       setResetMode(true)
-      window.history.replaceState({}, '', '/')
     }
   }, [])
 
@@ -275,7 +276,7 @@ export default function App() {
     e.preventDefault()
     setLoading(true)
     setAuthError("")
-    const { error } = await supabase.auth.resetPasswordForEmail(form.email, { redirectTo: "https://surplusrecoverypro.site/?reset=true" })
+    const { error } = await supabase.auth.resetPasswordForEmail(form.email, { redirectTo: "https://surplusrecoverypro.site/" })
     setLoading(false)
     if (error) { setAuthError(error.message) } else { setForgotSent(true) }
   }

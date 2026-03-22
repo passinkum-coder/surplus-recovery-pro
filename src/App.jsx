@@ -126,9 +126,12 @@ export default function App() {
   const [claimPackageResult, setClaimPackageResult] = useState(null)
   const [claimPackageError, setClaimPackageError] = useState("")
 
+  const [paymentSuccess, setPaymentSuccess] = useState(false)
+
   useEffect(function() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('success') === 'true') {
+      setPaymentSuccess(true)
       window.history.replaceState({}, '', '/')
     }
     // Let Supabase read hash tokens before clearing - recovery handled by onAuthStateChange
@@ -620,7 +623,7 @@ export default function App() {
             <div>
               <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#fff" }}>{userName}</div>
               <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>{user.email}</div>
-              <div style={{ fontSize: "0.72rem", color: C.gold, marginTop: "0.3rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>Professional Plan</div>
+              <div style={{ fontSize: "0.72rem", color: C.gold, marginTop: "0.3rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>{(purchases.find(function(p){return p.mode==="subscription"}) || {product_name:"No Active Plan"}).product_name} Plan</div>
             </div>
           </div>
 
@@ -657,8 +660,18 @@ export default function App() {
               <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1rem" }}>Current Plan</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                 <div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: C.gold }}>Professional</div>
-                  <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>$149/month - Multi-county access, skip tracing, priority support</div>
+                  {(function() {
+                    const planPurchase = purchases.find(function(p) { return p.mode === "subscription" })
+                    const planName = planPurchase ? planPurchase.product_name : "No Active Plan"
+                    const planTier = tiers.find(function(t) { return t.name === planName })
+                    const planDesc = planTier ? planTier.price + "/month - " + planTier.features[0] + ", and more" : "Subscribe to a plan to get started"
+                    return (
+                      <>
+                        <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: C.gold }}>{planName}</div>
+                        <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>{planDesc}</div>
+                      </>
+                    )
+                  })()}
                 </div>
                 <button type="button" onClick={() => { setPage("home"); setTimeout(function() { document.getElementById("pricing") && document.getElementById("pricing").scrollIntoView({ behavior: "smooth" }) }, 100) }} style={{ padding: "0.55rem 1.2rem", border: "1px solid " + C.gold, borderRadius: "3px", background: "transparent", color: C.gold, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.8rem", letterSpacing: "0.06em", fontWeight: "bold" }}>UPGRADE PLAN</button>
               </div>
@@ -691,6 +704,15 @@ export default function App() {
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         {DashNav}
         <div style={{ padding: "2rem 2.5rem" }}>
+          {paymentSuccess && (
+            <div style={{ background: "rgba(34,197,94,0.12)", border: "1px solid " + C.green, borderRadius: "4px", padding: "1rem 1.5rem", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ color: C.green, fontWeight: "bold", fontSize: "0.95rem" }}>Payment Successful!</div>
+                <div style={{ color: C.light, fontSize: "0.82rem", marginTop: "0.2rem" }}>Your subscription is now active. Welcome to SurplusRecoveryPro!</div>
+              </div>
+              <button onClick={() => setPaymentSuccess(false)} style={{ background: "none", border: "none", color: C.muted, fontSize: "1.2rem", cursor: "pointer" }}>x</button>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem" }}>Welcome back, {userName}</div>

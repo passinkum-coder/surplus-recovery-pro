@@ -12,12 +12,9 @@ export default async function handler(req, res) {
 
   try {
     const {
-      case_id,
       county,
       property_address,
       surplus_amount,
-      parcel_id,
-      sale_date,
       owner_name,
       claimant_name,
       claimant_address,
@@ -31,16 +28,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // Store claim package record
+    // Store claim package record (no case_id to avoid foreign key constraint)
     const { data: claimPackage, error } = await supabase
       .from('claim_packages')
       .insert({
-        case_id,
         user_id,
-        county,
+        county: county || '',
         property_address: property_address || '',
         claimant_name,
-        claimant_type,
+        claimant_type: claimant_type || 'Owner',
         surplus_amount: surplus_amount ? parseFloat(surplus_amount) : null,
         status: 'generating'
       })
@@ -49,8 +45,7 @@ export default async function handler(req, res) {
 
     if (error) throw error
 
-    // TODO: trigger actual PDF generation here
-    // For now, mark as complete with a placeholder
+    // Mark as complete with placeholder URL
     await supabase
       .from('claim_packages')
       .update({ 

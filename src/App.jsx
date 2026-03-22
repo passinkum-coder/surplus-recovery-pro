@@ -1845,7 +1845,9 @@ export default function App() {
       )}
     </div>
   )
-}
+}function Badge({ status }) {
+  const map = {
+    Pending: { bg: "rgba(240,180,41,0.15)", c: "#f0b429" },
     Pending: { bg: "rgba(240,180,41,0.15)", c: "#f0b429" },
     Filed: { bg: "rgba(129,140,248,0.15)", c: "#818cf8" },
     Complete: { bg: "rgba(34,197,94,0.15)", c: "#22c55e" },

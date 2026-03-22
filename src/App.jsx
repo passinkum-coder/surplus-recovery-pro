@@ -98,6 +98,9 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [hoveredTier, setHoveredTier] = useState(null)
   const [forgotSent, setForgotSent] = useState(false)
+  const [resetMode, setResetMode] = useState(false)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetMsg, setResetMsg] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [claims, setClaims] = useState([])
   const [purchases, setPurchases] = useState([])
@@ -122,6 +125,22 @@ export default function App() {
     if (params.get('success') === 'true') {
       window.history.replaceState({}, '', '/')
     }
+    // Handle password reset token from email link
+    const hash = window.location.hash
+    if (hash && hash.includes('type=recovery')) {
+      setResetMode(true)
+      window.history.replaceState({}, '', '/')
+    }
+  }, [])
+
+  // Listen for Supabase PASSWORD_RECOVERY event
+  useEffect(function() {
+    const { data: listener } = supabase.auth.onAuthStateChange(function(event, session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setResetMode(true)
+      }
+    })
+    return function() { listener.subscription.unsubscribe() }
   }, [])
 
   useEffect(function() {
@@ -271,6 +290,14 @@ export default function App() {
     setPage("home")
   }
 
+  async function handleResetPassword(e) {
+    e.preventDefault()
+    if (resetPassword.length < 6) { setResetMsg("error:Password must be at least 6 characters."); return }
+    const { error } = await supabase.auth.updateUser({ password: resetPassword })
+    if (error) { setResetMsg("error:" + error.message) } 
+    else { setResetMsg("success:Password updated! You can now log in."); setResetMode(false); setResetPassword('') }
+  }
+
   async function sendChat(e) {
     e.preventDefault()
     if (!chatInput.trim() || chatLoading) return
@@ -405,6 +432,32 @@ export default function App() {
       </div>
     </div>
   )
+
+  if (resetMode) {
+    const isError = resetMsg.startsWith("error:")
+    const msgText = resetMsg.replace(/^(error:|success:)/, "")
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ background: C.card, border: "1px solid " + C.border, borderTop: "3px solid " + C.gold, borderRadius: "4px", padding: "2.25rem", width: "100%", maxWidth: "380px" }}>
+          <div style={{ fontSize: "0.68rem", color: C.gold, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: "0.4rem" }}>SurplusRecoveryPro</div>
+          <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "#fff", marginBottom: "0.4rem" }}>Set New Password</div>
+          <div style={{ color: C.muted, fontSize: "0.83rem", marginBottom: "1.75rem" }}>Enter your new password below</div>
+          {resetMsg && (
+            <div style={{ background: isError ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)", border: "1px solid " + (isError ? C.red : C.green), borderRadius: "3px", padding: "0.75rem", marginBottom: "1rem", fontSize: "0.83rem", color: isError ? C.red : C.green }}>
+              {msgText}
+            </div>
+          )}
+          <form onSubmit={handleResetPassword}>
+            <label style={labelStyle}>New Password</label>
+            <input style={inputStyle} type="password" placeholder="Enter new password" value={resetPassword} onChange={function(e) { setResetPassword(e.target.value) }} required />
+            <button type="submit" style={{ width: "100%", padding: "0.85rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.9rem" }}>
+              Update Password
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
 
   if (page === "addons" && user) {
     return (

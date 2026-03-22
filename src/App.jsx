@@ -264,7 +264,7 @@ export default function App() {
         password: form.password,
         options: { data: { full_name: form.name } }
       })
-      if (error) { setAuthError(error.message) } else { setAuthError("Check your email to confirm your account!") }
+      if (error) { setAuthError(error.message) } else { setModal(null); if (pendingCheckout) { handleCheckout(pendingCheckout.priceId, pendingCheckout.mode); setPendingCheckout(null) } }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
       if (error) { setAuthError(error.message) } else { setModal(null); if (pendingCheckout) { handleCheckout(pendingCheckout.priceId, pendingCheckout.mode); setPendingCheckout(null) } }

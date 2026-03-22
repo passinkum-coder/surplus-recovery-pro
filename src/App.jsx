@@ -830,10 +830,10 @@ export default function App() {
                   </div>
                   <button type="submit" disabled={claimPackageLoading} style={{ width: "100%", padding: "0.85rem", background: claimPackageLoading ? C.muted : C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: claimPackageLoading ? "not-allowed" : "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", textTransform: "uppercase", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
                     {claimPackageLoading ? (
-                      <>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                         <span style={{ display: "inline-block", width: "14px", height: "14px", border: "2px solid #0a1628", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }}></span>
                         Generating... this may take a moment
-                      </>
+                      </span>
                     ) : "Generate Claim Package"}
                   </button>
                 </form>
@@ -1066,7 +1066,5 @@ export default function App() {
         </div>
       )}
     </div>
-  )
-}
   )
 }

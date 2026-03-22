@@ -1,10 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-)
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -28,10 +21,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
 
-    // Store claim package record (no case_id to avoid foreign key constraint)
-    const { data: claimPackage, error } = await supabase
-      .from('claim_packages')
-      .insert({
+    const SUPABASE_URL = process.env.SUPABASE_URL
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
+
+    // Insert claim package record via REST
+    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/claim_packages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
         user_id,
         county: county || '',
         property_address: property_address || '',
@@ -40,21 +42,28 @@ export default async function handler(req, res) {
         surplus_amount: surplus_amount ? parseFloat(surplus_amount) : null,
         status: 'generating'
       })
-      .select()
-      .single()
+    })
 
-    if (error) throw error
+    const insertData = await insertRes.json()
+    if (!insertRes.ok) throw new Error(JSON.stringify(insertData))
 
-    // Mark as complete with placeholder URL
-    await supabase
-      .from('claim_packages')
-      .update({ 
+    const claimPackage = Array.isArray(insertData) ? insertData[0] : insertData
+
+    // Update with placeholder pdf_url
+    await fetch(`${SUPABASE_URL}/rest/v1/claim_packages?id=eq.${claimPackage.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      },
+      body: JSON.stringify({
         status: 'complete',
         pdf_url: `https://surplusrecoverypro.site/api/claim-pdf/${claimPackage.id}`
       })
-      .eq('id', claimPackage.id)
+    })
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       success: true,
       package_id: claimPackage.id,
       message: 'Claim package is being generated'

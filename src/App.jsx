@@ -110,7 +110,6 @@ export default function App() {
   const [claimSaving, setClaimSaving] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [pendingCheckout, setPendingCheckout] = useState(null)
-  const pendingCheckoutRef = useRef(null)
   const [profileForm, setProfileForm] = useState({ full_name: "", newPassword: "", confirmPassword: "" })
   const [profileMsg, setProfileMsg] = useState("")
   const [profileSaving, setProfileSaving] = useState(false)
@@ -126,12 +125,9 @@ export default function App() {
   const [claimPackageResult, setClaimPackageResult] = useState(null)
   const [claimPackageError, setClaimPackageError] = useState("")
 
-  const [paymentSuccess, setPaymentSuccess] = useState(false)
-
   useEffect(function() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('success') === 'true') {
-      setPaymentSuccess(true)
       window.history.replaceState({}, '', '/')
     }
     // Let Supabase read hash tokens before clearing - recovery handled by onAuthStateChange
@@ -154,21 +150,7 @@ export default function App() {
         if (session) setUser(session.user)
       } else if (event === 'SIGNED_IN' && session) {
         setUser(session.user)
-        if (pendingCheckoutRef.current) {
-          const { priceId, mode } = pendingCheckoutRef.current
-          pendingCheckoutRef.current = null
-          setPendingCheckout(null)
-          setModal(null)
-          fetch('/api/create-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ priceId, mode, userId: session.user.id, userEmail: session.user.email })
-          }).then(function(r) { return r.json() }).then(function(data) {
-            if (data.url) { window.location.href = data.url } else { setPage('dashboard') }
-          }).catch(function() { setPage('dashboard') })
-        } else {
-          setPage('dashboard')
-        }
+        setPage("dashboard")
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setPage("home")
@@ -282,7 +264,7 @@ export default function App() {
         password: form.password,
         options: { data: { full_name: form.name } }
       })
-      if (error) { setAuthError(error.message) }
+      if (error) { setAuthError(error.message) } else { setAuthError("Check your email to confirm your account!") }
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email: form.email, password: form.password })
       if (error) { setAuthError(error.message) } else { setModal(null); if (pendingCheckout) { handleCheckout(pendingCheckout.priceId, pendingCheckout.mode); setPendingCheckout(null) } }
@@ -407,7 +389,7 @@ export default function App() {
   }
 
   async function handleCheckout(priceId, mode) {
-    if (!user) { const pc = { priceId, mode }; setPendingCheckout(pc); pendingCheckoutRef.current = pc; openAuth("signup"); return }
+    if (!user) { setPendingCheckout({ priceId, mode }); openAuth("signup"); return }
     try {
       const response = await fetch("/api/create-checkout-session", {
         method: "POST",
@@ -458,7 +440,7 @@ export default function App() {
 
   const DashNav = (
     <div style={navStyle}>
-      <span style={{ color: C.gold, fontWeight: "bold", letterSpacing: "0.08em", cursor: "pointer", fontSize: "1.1rem" }} onClick={() => setPage("dashboard")}>SURPLUS RECOVERY PRO</span>
+      <span className="nav-title" style={{ color: C.gold, fontWeight: "bold", letterSpacing: "0.08em", cursor: "pointer", fontSize: "1.1rem" }} onClick={() => setPage("dashboard")}>SURPLUS RECOVERY PRO</span>
       <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
         <span style={{ color: C.muted, fontSize: "0.8rem", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "0.4rem" }}>
           <span style={{ color: C.gold }}>PROFESSIONAL</span>
@@ -623,7 +605,7 @@ export default function App() {
             <div>
               <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "#fff" }}>{userName}</div>
               <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>{user.email}</div>
-              <div style={{ fontSize: "0.72rem", color: C.gold, marginTop: "0.3rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>{(purchases.find(function(p){return p.mode==="subscription"}) || {product_name:"No Active Plan"}).product_name} Plan</div>
+              <div style={{ fontSize: "0.72rem", color: C.gold, marginTop: "0.3rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>Professional Plan</div>
             </div>
           </div>
 
@@ -660,18 +642,8 @@ export default function App() {
               <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "1rem" }}>Current Plan</div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
                 <div>
-                  {(function() {
-                    const planPurchase = purchases.find(function(p) { return p.mode === "subscription" })
-                    const planName = planPurchase ? planPurchase.product_name : "No Active Plan"
-                    const planTier = tiers.find(function(t) { return t.name === planName })
-                    const planDesc = planTier ? planTier.price + "/month - " + planTier.features[0] + ", and more" : "Subscribe to a plan to get started"
-                    return (
-                      <>
-                        <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: C.gold }}>{planName}</div>
-                        <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>{planDesc}</div>
-                      </>
-                    )
-                  })()}
+                  <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: C.gold }}>Professional</div>
+                  <div style={{ fontSize: "0.82rem", color: C.muted, marginTop: "0.2rem" }}>$149/month - Multi-county access, skip tracing, priority support</div>
                 </div>
                 <button type="button" onClick={() => { setPage("home"); setTimeout(function() { document.getElementById("pricing") && document.getElementById("pricing").scrollIntoView({ behavior: "smooth" }) }, 100) }} style={{ padding: "0.55rem 1.2rem", border: "1px solid " + C.gold, borderRadius: "3px", background: "transparent", color: C.gold, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.8rem", letterSpacing: "0.06em", fontWeight: "bold" }}>UPGRADE PLAN</button>
               </div>
@@ -701,19 +673,25 @@ export default function App() {
   if (page === "dashboard" && user) {
     return (
       <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif" }}>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        <style>{`
+  @keyframes spin { to { transform: rotate(360deg) } }
+  @media (max-width: 640px) {
+    .dash-header { flex-direction: column !important; align-items: flex-start !important; }
+    .dash-padding { padding: 1rem !important; }
+    .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 0.75rem !important; }
+    .claims-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .claims-table td, .claims-table th { white-space: nowrap; }
+    .nav-title { font-size: 0.85rem !important; }
+    .modal-inner { padding: 1.25rem !important; }
+    .form-grid { grid-template-columns: 1fr !important; }
+  }
+  @media (max-width: 400px) {
+    .stats-grid { grid-template-columns: 1fr !important; }
+  }
+`}</style>
         {DashNav}
-        <div style={{ padding: "2rem 2.5rem" }}>
-          {paymentSuccess && (
-            <div style={{ background: "rgba(34,197,94,0.12)", border: "1px solid " + C.green, borderRadius: "4px", padding: "1rem 1.5rem", marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ color: C.green, fontWeight: "bold", fontSize: "0.95rem" }}>Payment Successful!</div>
-                <div style={{ color: C.light, fontSize: "0.82rem", marginTop: "0.2rem" }}>Your subscription is now active. Welcome to SurplusRecoveryPro!</div>
-              </div>
-              <button onClick={() => setPaymentSuccess(false)} style={{ background: "none", border: "none", color: C.muted, fontSize: "1.2rem", cursor: "pointer" }}>x</button>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
+        <div className="dash-padding" style={{ padding: "2rem 2.5rem" }}>
+          <div className="dash-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "2rem", flexWrap: "wrap", gap: "1rem" }}>
             <div>
               <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#fff", marginBottom: "0.25rem" }}>Welcome back, {userName}</div>
               <div style={{ color: C.muted, fontSize: "0.8rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>Surplus Recovery Dashboard</div>
@@ -721,7 +699,7 @@ export default function App() {
             <button onClick={() => { setClaimError(""); setModal("newclaim") }} style={{ padding: "0.65rem 1.4rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.06em", fontSize: "0.85rem" }}>+ NEW CLAIM</button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "1.25rem", marginBottom: "2rem" }}>
             {[
               { l: "Total Claims", v: String(claims.length), s: "in your account", c: C.gold },
               { l: "Total Recovered", v: "$" + totalRecovered.toLocaleString(), s: "across all claims", c: C.green },
@@ -751,7 +729,7 @@ export default function App() {
                 <button onClick={() => { setClaimError(""); setModal("newclaim") }} style={{ padding: "0.65rem 1.4rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.82rem" }}>+ ADD FIRST CLAIM</button>
               </div>
             ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table className="claims-table" style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#071020" }}>
                     {["Owner", "County", "State", "Amount", "Status", "Date Added", ""].map(function(h) {
@@ -792,7 +770,7 @@ export default function App() {
               <span style={{ fontWeight: "bold", color: "#fff", fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your Add-Ons</span>
               <span style={{ fontSize: "0.78rem", color: C.gold, letterSpacing: "0.05em" }}>{purchases.length} PURCHASED</span>
             </div>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table className="claims-table" style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#071020" }}>
                   {["Service", "Amount", "Type", "Date"].map(function(h) {
@@ -847,7 +825,7 @@ export default function App() {
                     <label style={labelStyle}>Claimant Address *</label>
                     <input style={inputStyle} placeholder="Street, City, State, ZIP" value={claimantForm.address} onChange={function(e) { setClaimantForm({ ...claimantForm, address: e.target.value }) }} required />
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                  <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                     <div>
                       <label style={labelStyle}>Email *</label>
                       <input style={{ ...inputStyle, marginBottom: 0 }} type="email" placeholder="email@example.com" value={claimantForm.email} onChange={function(e) { setClaimantForm({ ...claimantForm, email: e.target.value }) }} required />
@@ -893,7 +871,7 @@ export default function App() {
                   <label style={labelStyle}>Owner Name *</label>
                   <input style={inputStyle} placeholder="e.g. James Wilson" value={newClaim.owner_name} onChange={function(e) { setNewClaim({ ...newClaim, owner_name: e.target.value }) }} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+                <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
                   <div>
                     <label style={labelStyle}>County *</label>
                     <input style={{ ...inputStyle, marginBottom: 0 }} placeholder="e.g. Cook County" value={newClaim.county} onChange={function(e) { setNewClaim({ ...newClaim, county: e.target.value }) }} />

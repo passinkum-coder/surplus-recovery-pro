@@ -439,7 +439,7 @@ export default function App() {
   function formatDate(d) { return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) }
 
   const DashNav = (
-    <div style={navStyle}>
+    <div className="home-nav" style={navStyle}>
       <span className="nav-title" style={{ color: C.gold, fontWeight: "bold", letterSpacing: "0.08em", cursor: "pointer", fontSize: "1.1rem" }} onClick={() => setPage("dashboard")}>SURPLUS RECOVERY PRO</span>
       <div style={{ display: "flex", gap: "1.25rem", alignItems: "center" }}>
         <span style={{ color: C.muted, fontSize: "0.8rem", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: "0.4rem" }}>
@@ -681,12 +681,20 @@ export default function App() {
     .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 0.75rem !important; }
     .claims-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .claims-table td, .claims-table th { white-space: nowrap; }
-    .nav-title { font-size: 0.85rem !important; }
+    .nav-title { font-size: 0.78rem !important; letter-spacing: 0.03em !important; }
     .modal-inner { padding: 1.25rem !important; }
     .form-grid { grid-template-columns: 1fr !important; }
+    .home-nav { padding: 0 1rem !important; }
+    .home-nav-buttons button { padding: 0.3rem 0.7rem !important; font-size: 0.75rem !important; }
+    .hero-title { font-size: 2rem !important; }
+    .hero-section { padding: 3rem 1rem 2rem !important; }
+    .hero-buttons { flex-direction: column !important; align-items: center !important; }
+    .hero-buttons button { width: 100% !important; max-width: 280px !important; }
+    .stats-bar { gap: 1.5rem !important; padding: 1.5rem 1rem !important; }
   }
   @media (max-width: 400px) {
     .stats-grid { grid-template-columns: 1fr !important; }
+    .nav-title { font-size: 0.7rem !important; }
   }
 `}</style>
         {DashNav}
@@ -959,23 +967,23 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "Georgia, serif" }}>
-      <div style={navStyle}>
+      <div className="home-nav" style={navStyle}>
         <span style={{ color: C.gold, fontWeight: "bold", letterSpacing: "0.08em", fontSize: "1.1rem" }}>SURPLUS RECOVERY PRO</span>
-        <div style={{ display: "flex", gap: "0.75rem" }}>
+        <div className="home-nav-buttons" style={{ display: "flex", gap: "0.75rem" }}>
           <button onClick={() => openAuth("login")} style={{ padding: "0.35rem 1rem", border: "1px solid " + C.border, borderRadius: "3px", background: "none", color: C.light, cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.82rem", letterSpacing: "0.05em" }}>LOG IN</button>
           <button onClick={() => openAuth("signup")} style={{ padding: "0.35rem 1rem", border: "none", borderRadius: "3px", background: C.gold, color: "#0a1628", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", fontSize: "0.82rem", letterSpacing: "0.05em" }}>GET STARTED</button>
         </div>
       </div>
 
-      <div style={{ textAlign: "center", padding: "5rem 2rem 3.5rem", maxWidth: "860px", margin: "0 auto" }}>
+      <div className="hero-section" style={{ textAlign: "center", padding: "5rem 2rem 3.5rem", maxWidth: "860px", margin: "0 auto" }}>
         <div style={{ display: "inline-block", border: "1px solid " + C.gold, color: C.gold, padding: "0.3rem 1.2rem", fontSize: "0.72rem", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "1.75rem" }}>Surplus Recovery Platform</div>
-        <h1 style={{ fontSize: "2.8rem", fontWeight: "bold", color: "#fff", lineHeight: 1.2, margin: "0 0 1.25rem" }}>
+        <h1 className="hero-title" style={{ fontSize: "2.8rem", fontWeight: "bold", color: "#fff", lineHeight: 1.2, margin: "0 0 1.25rem" }}>
           Recover Unclaimed Funds<br /><span style={{ color: C.gold }}>Faster and Smarter</span>
         </h1>
         <p style={{ fontSize: "1.05rem", color: C.light, maxWidth: "560px", margin: "1.25rem auto 2.25rem", lineHeight: 1.8 }}>
           Professional-grade tools, legal support, and county access for surplus fund recovery - trusted by attorneys, investors, and recovery specialists.
         </p>
-        <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+        <div className="hero-buttons" style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={() => openAuth("signup")} style={{ padding: "0.8rem 2.2rem", background: C.gold, color: "#0a1628", border: "none", borderRadius: "3px", fontWeight: "bold", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", fontSize: "0.9rem" }}>START FREE TRIAL</button>
           <button onClick={() => document.getElementById("pricing").scrollIntoView({ behavior: "smooth" })} style={{ padding: "0.8rem 2.2rem", background: "transparent", color: C.light, border: "1px solid " + C.border, borderRadius: "3px", cursor: "pointer", fontFamily: "Georgia, serif", letterSpacing: "0.08em", fontSize: "0.9rem" }}>VIEW PRICING</button>
         </div>

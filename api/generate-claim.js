@@ -58,20 +58,22 @@ export default async function handler(req, res) {
 <head>
 <meta charset="UTF-8">
 <style>
-  body { font-family: Georgia, serif; color: #1a1a1a; margin: 0; padding: 0; font-size: 12pt; line-height: 1.6; }
-  .page { padding: 1in; min-height: 9in; page-break-after: always; }
+  body { font-family: Georgia, serif; color: #1a1a1a; margin: 0; padding: 0; font-size: 11pt; line-height: 1.4; }
+  .page { padding: 0.65in; page-break-after: always; }
   .page:last-child { page-break-after: avoid; }
-  h1 { font-size: 16pt; text-align: center; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #1a1a1a; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
-  h2 { font-size: 13pt; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1.5rem; }
-  .label { font-size: 10pt; text-transform: uppercase; letter-spacing: 0.08em; color: #555; margin-bottom: 0.2rem; }
-  .value { font-size: 12pt; border-bottom: 1px solid #999; padding-bottom: 0.2rem; margin-bottom: 1rem; min-height: 1.2rem; }
-  .signature-line { border-bottom: 1px solid #1a1a1a; margin-top: 2rem; margin-bottom: 0.25rem; width: 60%; }
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-  .header-info { text-align: right; margin-bottom: 2rem; }
-  .county-address { margin-bottom: 2rem; }
-  .re-line { margin: 1.5rem 0; font-weight: bold; }
-  ol li { margin-bottom: 0.75rem; }
-  .notary-box { border: 1px solid #1a1a1a; padding: 1rem; margin-top: 2rem; }
+  h1 { font-size: 14pt; text-align: center; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 2px solid #1a1a1a; padding-bottom: 0.3rem; margin-bottom: 1rem; margin-top: 0; }
+  h2 { font-size: 11pt; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1rem; margin-bottom: 0.5rem; }
+  p { margin: 0.5rem 0; }
+  .label { font-size: 9pt; text-transform: uppercase; letter-spacing: 0.08em; color: #555; margin-bottom: 0.1rem; margin-top: 0.5rem; }
+  .value { font-size: 11pt; border-bottom: 1px solid #999; padding-bottom: 0.1rem; margin-bottom: 0.5rem; min-height: 1rem; }
+  .signature-line { border-bottom: 1px solid #1a1a1a; margin-top: 1rem; margin-bottom: 0.2rem; width: 60%; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .header-info { text-align: right; margin-bottom: 1rem; font-size: 10pt; line-height: 1.5; }
+  .county-address { margin-bottom: 1rem; font-size: 10pt; line-height: 1.5; }
+  .re-line { margin: 1rem 0; font-weight: bold; font-size: 10pt; }
+  ol li { margin-bottom: 0.4rem; }
+  ul li { margin-bottom: 0.4rem; }
+  .notary-box { border: 1px solid #1a1a1a; padding: 0.75rem; margin-top: 1rem; }
 </style>
 </head>
 <body>

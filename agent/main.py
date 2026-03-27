@@ -6,13 +6,14 @@ from scrapers.county_scrapers import (
     ForsythScraper, HallScraper, RichmondScraper
 )
 # from scrapers.florida_scrapers import (
-    MiamiDadeScraper, BrowardScraper, PalmBeachScraper,
-    HillsboroughScraper, OrangeCountyFLScraper
-)
+#     MiamiDadeScraper, BrowardScraper, PalmBeachScraper,
+#     HillsboroughScraper, OrangeCountyFLScraper
+# )
+
 # from scrapers.texas_scrapers import (
-    HarrisScraper, DallasScraper, TarrantScraper,
-    BexarScraper, TravisScraper
-)
+#     HarrisScraper, DallasScraper, TarrantScraper,
+#     BexarScraper, TravisScraper
+# )
 from database.supabase_client import upsert_records, get_record_count
 from alert_system import check_and_create_alerts
 

@@ -1,4 +1,4 @@
-from scrapers.county_scrapers import FultonScraper
+from scrapers.county_scrapers import FultonScraper, GwinnettScraper
 
 scraper = FultonScraper()
 

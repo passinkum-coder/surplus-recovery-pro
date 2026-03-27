@@ -35,7 +35,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        working-directory: agent
         run: |
-          export PYTHONPATH=$GITHUB_WORKSPACE/agent
-          python main.py
+          cd $GITHUB_WORKSPACE/agent
+          python -c "import sys; sys.path.insert(0, '.'); import main; main.run()"

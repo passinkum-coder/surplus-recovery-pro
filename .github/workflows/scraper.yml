@@ -31,12 +31,11 @@ jobs:
       - name: Install Playwright browser
         run: |
           python -m playwright install chromium
-
-      - name: Run scraper
+- name: Run scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        working-directory: agent
         run: |
-          cd agent
-          export PYTHONPATH=$(pwd)
+          export PYTHONPATH=$GITHUB_WORKSPACE/agent
           python main.py

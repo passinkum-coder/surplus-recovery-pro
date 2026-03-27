@@ -15,7 +15,7 @@ from scrapers.county_scrapers import (
 #     BexarScraper, TravisScraper
 # )
 from database.supabase_client import upsert_records, get_record_count
-from alert_system import check_and_create_alerts
+#from alert_system import check_and_create_alerts
 
 logging.basicConfig(
     level=logging.INFO,

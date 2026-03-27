@@ -5,7 +5,8 @@ from scrapers.county_scrapers import (
     DeKalbScraper,
     CherokeeScraper
 )
-sscrapers = [
+
+scrapers = [
     FultonScraper(),
     GwinnettScraper(),
     CobbScraper(),

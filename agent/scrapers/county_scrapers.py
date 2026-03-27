@@ -1,4 +1,4 @@
-from scrapers.base_scraper import BaseScraper
+from base_scraper import BaseScraper
 from processors.pdf_processor import extract_pdf
 from processors.table_processor import extract_table
 from playwright.sync_api import sync_playwright

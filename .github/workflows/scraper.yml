@@ -22,10 +22,11 @@ jobs:
           cd agent
           pip install -r requirements.txt
           python -m playwright install chromium
-      - name: Run scraper
+- name: Run scraper
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           cd $GITHUB_WORKSPACE/agent
-          python -c "import sys; sys.path.insert(0, '.'); import
+          export PYTHONPATH=$GITHUB_WORKSPACE/agent
+          python main.py

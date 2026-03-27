@@ -5,11 +5,7 @@ scrapers = [
     GwinnettScraper()
 ]
 
-print("Running Fulton scraper...")
-
-try:
-    results = scraper.scrape()
-  for scraper in scrapers:
+for scraper in scrapers:
     print("Running", scraper.county_name)
 
     try:

@@ -6,7 +6,7 @@ from scrapers.county_scrapers import (
     CherokeeScraper,
     ClaytonScraper
 )
-)
+
 
 sscrapers = [
     FultonScraper(),

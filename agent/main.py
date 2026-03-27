@@ -7,8 +7,8 @@ from scrapers.county_scrapers import (
     ClaytonScraper
 )
 
-
-sscrapers = [
+# STEP 1: CREATE LIST FIRST (IMPORTANT)
+scrapers = [
     FultonScraper(),
     GwinnettScraper(),
     CobbScraper(),
@@ -17,6 +17,7 @@ sscrapers = [
     ClaytonScraper()
 ]
 
+# STEP 2: RUN LOOP SECOND
 for scraper in scrapers:
     print("Running", scraper.county_name)
 

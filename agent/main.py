@@ -5,11 +5,11 @@ from scrapers.county_scrapers import (
     CherokeeScraper, ClaytonScraper, HenryScraper,
     ForsythScraper, HallScraper, RichmondScraper
 )
-from scrapers.florida_scrapers import (
+# from scrapers.florida_scrapers import (
     MiamiDadeScraper, BrowardScraper, PalmBeachScraper,
     HillsboroughScraper, OrangeCountyFLScraper
 )
-from scrapers.texas_scrapers import (
+# from scrapers.texas_scrapers import (
     HarrisScraper, DallasScraper, TarrantScraper,
     BexarScraper, TravisScraper
 )

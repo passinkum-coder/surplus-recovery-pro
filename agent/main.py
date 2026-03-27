@@ -1,9 +1,10 @@
-from scrapers.county_scrapers import FultonScraper, GwinnettScraper, CobbScraper
+from scrapers.county_scrapers import FultonScraper, GwinnettScraper, CobbScraper, DeKalbScraper
 
 scrapers = [
     FultonScraper(),
     GwinnettScraper(),
-    CobbScraper()
+    CobbScraper(),
+    DeKalbScraper()
 ]
 
 for scraper in scrapers:

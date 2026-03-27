@@ -1,3 +1,5 @@
+name: Surplus Funds Scraper
+
 on:
   schedule:
     - cron: '0 6 * * 1'
@@ -56,4 +58,4 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           cd agent
-          python main.py
+          PYTHONPATH=. python main.py

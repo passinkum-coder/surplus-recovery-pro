@@ -3,15 +3,18 @@ from scrapers.county_scrapers import (
     GwinnettScraper,
     CobbScraper,
     DeKalbScraper,
-    CherokeeScraper
+    CherokeeScraper,
+    ClaytonScraper
+)
 )
 
-scrapers = [
+sscrapers = [
     FultonScraper(),
     GwinnettScraper(),
     CobbScraper(),
     DeKalbScraper(),
-    CherokeeScraper()
+    CherokeeScraper(),
+    ClaytonScraper()
 ]
 
 for scraper in scrapers:

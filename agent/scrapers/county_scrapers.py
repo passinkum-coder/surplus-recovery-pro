@@ -35,4 +35,114 @@ class GwinnettScraper(BaseScraper):
     def __init__(self):
         super().__init__(
             county_name="Gwinnett",
-            url="https://www.
+            url="https://www.gwinnettcounty.com/web/gwinnett/departments/financialservices/taxcommissioner/excessfunds"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class CobbScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="Cobb",
+            url="https://www.cobbtax.org/property-taxes/excess-funds/"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class DeKalbScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="DeKalb",
+            url="https://www.dekalbcountyga.gov/tax-commissioner/excess-funds"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class CherokeeScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="Cherokee",
+            url="https://www.cherokeega.com/Tax-Commissioner/Excess-Funds/"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class ClaytonScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="Clayton",
+            url="https://www.claytoncountyga.gov/government/tax-commissioner/excess-funds"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class HenryScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="Henry",
+            url="https://www.co.henry.ga.us/departments/tax_commissioner/excess_funds.php"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class ForsythScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="Forsyth",
+            url="https://www.forsythco.com/Departments-Offices/Tax-Commissioner/Excess-Funds"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class HallScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="Hall",
+            url="https://www.hallcounty.org/219/Excess-Funds"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)
+
+
+class RichmondScraper(BaseScraper):
+    def __init__(self):
+        super().__init__(
+            county_name="Richmond",
+            url="https://www.augustaga.gov/1235/Excess-Funds"
+        )
+
+    def scrape(self):
+        content = self.get_page()
+        records = extract_table(content, self.county_name)
+        return self.normalize(records)

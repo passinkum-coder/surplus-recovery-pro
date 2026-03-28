@@ -6,7 +6,8 @@ from scrapers.county_scrapers import (
     CherokeeScraper,
     ClaytonScraper,
     HenryScraper,
-    ForsythScraper
+    ForsythScraper,
+    HallScraper
 )
 
 # STEP 1: CREATE LIST FIRST (IMPORTANT)
@@ -18,7 +19,8 @@ scrapers = [
     CherokeeScraper(),
     ClaytonScraper(),
     HenryScraper(),
-    ForsythScraper()
+    ForsythScraper(),
+    HallScraper()
 ]
 
 # STEP 2: RUN LOOP SECOND

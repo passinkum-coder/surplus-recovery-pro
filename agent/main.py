@@ -24,12 +24,16 @@ def load_scrapers():
 
 scrapers = load_scrapers()
 
-# STEP 2: RUN LOOP SECOND
 for scraper in scrapers:
     print("Running", scraper.county_name)
 
     try:
-        results = scraper.scrape()
-        print(results)
+        records = scraper.scrape()
+
+        print(records)
+
+        if records:
+            upsert_records(records)
+
     except Exception as e:
         print("Error:", scraper.county_name, e)

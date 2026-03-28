@@ -8,7 +8,10 @@ from scrapers.county_scrapers import (
     HenryScraper,
     ForsythScraper,
     HallScraper,
-    RichmondScraper
+    RichmondScraper,
+    MiamiDadeScraper,
+    BrowardScraper,
+    PalmBeachScraper
 )
 
 # STEP 1: CREATE LIST FIRST (IMPORTANT)
@@ -22,7 +25,11 @@ scrapers = [
     HenryScraper(),
     ForsythScraper(),
     HallScraper(),
-    RichmondScraper()
+    RichmondScraper(),
+
+    MiamiDadeScraper(),
+    BrowardScraper(),
+    PalmBeachScraper()
 ]
 
 # STEP 2: RUN LOOP SECOND

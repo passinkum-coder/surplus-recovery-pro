@@ -5,7 +5,7 @@ import inspect
 from scrapers.base_scraper import BaseScraper
 
 def load_scrapers():
-    scrapers = []
+    scrapers = []from scrapers.base_scraper import BaseScraper
 
     folder = os.path.join(os.path.dirname(__file__), "scrapers")
 

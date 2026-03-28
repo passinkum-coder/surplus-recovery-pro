@@ -6,7 +6,7 @@ from scrapers.base_scraper import BaseScraper
 from database.supabase_client import upsert_records
 
 def load_scrapers():
-    scrapers = []from scrapers.base_scraper import BaseScraper
+   scrapers = []
 
     folder = os.path.join(os.path.dirname(__file__), "scrapers")
 

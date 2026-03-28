@@ -3,6 +3,7 @@ import importlib
 import inspect
 
 from scrapers.base_scraper import BaseScraper
+from database.supabase_client import upsert_records
 
 def load_scrapers():
     scrapers = []from scrapers.base_scraper import BaseScraper

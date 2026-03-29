@@ -1,33 +1,36 @@
-from scrapers.county_scrapers import load_scrapers
+for scraper in scrapers:
+    try:
+        print(f"============================")
+        print(f"Running: {scraper.county_name}")
 
+        # 🔥 SAFE EXECUTION WRAPPER (handles different scraper designs)
+        records = []
 
-def main():
-    # Load all scrapers from single source of truth
-    scrapers = load_scrapers()
-
-    print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
-
-    # Run each scraper safely
-    for scraper in scrapers:
-        try:
-            print(f"============================")
-            print(f"Running: {scraper.county_name}")
-            
+        if hasattr(scraper, "run"):
             records = scraper.run()
 
-            # Handle case where run() returns None
-            if records is None:
-                records = []
+        elif hasattr(scraper, "scrape"):
+            records = scraper.scrape()
 
-            print(f"COUNTY: {scraper.county_name}")
-            print(f"RECORDS FOUND: {len(records)}")
+        elif hasattr(scraper, "fetch"):
+            records = scraper.fetch()
 
-            # Optional: upsert logging if your scraper handles DB internally
-            print(f"Upserting: {len(records)}")
+        elif hasattr(scraper, "get_data"):
+            records = scraper.get_data()
 
-        except Exception as e:
-            print(f"ERROR in {scraper.county_name}: {e}")
+        else:
+            raise Exception(
+                f"No valid method found for {scraper.county_name}. "
+                f"Expected: run(), scrape(), fetch(), or get_data()"
+            )
 
+        # Normalize output
+        if records is None:
+            records = []
 
-if __name__ == "__main__":
-    main()
+        print(f"COUNTY: {scraper.county_name}")
+        print(f"RECORDS FOUND: {len(records)}")
+        print(f"Upserting: {len(records)}")
+
+    except Exception as e:
+        print(f"ERROR in {scraper.county_name}: {e}")

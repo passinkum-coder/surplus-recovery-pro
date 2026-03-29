@@ -1,36 +1,33 @@
-from scrapers.county_scrapers import load_scrapers as load_ga
-from scrapers.florida_scrapers import load_scrapers as load_fl
-from scrapers.texas_scrapers import load_scrapers as load_tx
+from scrapers.county_scrapers import load_scrapers
 
 
-def upsert_records(records):
-    print("Upserting:", len(records))
+def main():
+    # Load all scrapers from single source of truth
+    scrapers = load_scrapers()
 
+    print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
 
-def run_all_scrapers():
-    scrapers = []
-
-    # Load all states (UNIFIED SYSTEM)
-scrapers = load_scrapers()
-
-print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
-
+    # Run each scraper safely
     for scraper in scrapers:
-        print("\n============================")
-        print("Running:", scraper.county_name)
-
         try:
-            records = scraper.scrape()
+            print(f"============================")
+            print(f"Running: {scraper.county_name}")
+            
+            records = scraper.run()
 
-            print("COUNTY:", scraper.county_name)
-            print("RECORDS FOUND:", len(records) if records else 0)
+            # Handle case where run() returns None
+            if records is None:
+                records = []
 
-            if records:
-                upsert_records(records)
+            print(f"COUNTY: {scraper.county_name}")
+            print(f"RECORDS FOUND: {len(records)}")
+
+            # Optional: upsert logging if your scraper handles DB internally
+            print(f"Upserting: {len(records)}")
 
         except Exception as e:
-            print("ERROR:", scraper.county_name, str(e))
+            print(f"ERROR in {scraper.county_name}: {e}")
 
 
 if __name__ == "__main__":
-    run_all_scrapers()
+    main()

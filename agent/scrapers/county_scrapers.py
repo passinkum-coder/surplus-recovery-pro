@@ -1,88 +1,79 @@
-from scrapers.base_scraper import BaseScraper
-from scrapers.miami_dade_scraper import MiamiDadeScraper
-from scrapers.broward_scraper import BrowardScraper
-from scrapers.palm_beach_scraper import PalmBeachScraper
+from scrapers.universal_scraper import UniversalScraper
 
-
-# =========================
-# GEORGIA / OTHER SCRAPERS
-# =========================
-
-class CherokeeScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(
-            county_name="Cherokee",
-            state="GA",
-            url="https://www.cherokeega.com/Tax-Commissioner/Excess-Funds/"
-        )
-
-    def scrape(self):
-        html = self.get_page()
-
-        from bs4 import BeautifulSoup
-        soup = BeautifulSoup(html, "html.parser")
-
-        results = []
-
-        elements = soup.find_all(["li", "p", "div", "tr"])
-
-        for el in elements:
-            text = self.normalize(el.get_text())
-
-            if not text or len(text) < 12:
-                continue
-
-            keywords = [
-                "tax", "sale", "excess", "fund", "property",
-                "owner", "parcel", "amount", "$"
-            ]
-
-            if any(k in text.lower() for k in keywords):
-                results.append({
-                    "county": self.county_name,
-                    "state": self.state,
-                    "data": text
-                })
-
-        return results
-
-
-class OrangeCountyScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(
-            county_name="Orange",
-            state="FL",
-            url="https://example.com"
-        )
-
-    def scrape(self):
-        html = self.get_page()
-        return []
-
-
-class HillsboroughScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(
-            county_name="Hillsborough",
-            state="FL",
-            url="https://example.com"
-        )
-
-    def scrape(self):
-        html = self.get_page()
-        return []
-
-
-# =========================
-# LOADER FUNCTION
-# =========================
 
 def load_scrapers():
-    return [
-        CherokeeScraper(),
-        MiamiDadeScraper(),
-        BrowardScraper(),
-        PalmBeachScraper(),
-        HillsboroughScraper(),
-        OrangeCountyScraper(),
+
+    COUNTY_SOURCES = [
+        {
+            "county": "Miami-Dade",
+            "state": "FL",
+            "url": "https://www.miamidade.gov/Apps/PA/PAClaims/Home/UnclaimedProperty"
+        },
+
+        {
+            "county": "Broward",
+            "state": "FL",
+            "url": "PUT_BROWARD_URL_HERE"
+        },
+
+        {
+            "county": "Palm Beach",
+            "state": "FL",
+            "url": "PUT_PALM_BEACH_URL_HERE"
+        },
+
+        {
+            "county": "Hillsborough",
+            "state": "FL",
+            "url": "PUT_HILLSBOROUGH_URL_HERE"
+        },
+
+        {
+            "county": "Orange",
+            "state": "FL",
+            "url": "PUT_ORANGE_FL_URL_HERE"
+        },
+
+        {
+            "county": "Cherokee",
+            "state": "GA",
+            "url": "PUT_CHEROKEE_GA_URL_HERE"
+        },
+
+        {
+            "county": "Fulton",
+            "state": "GA",
+            "url": "PUT_FULTON_GA_URL_HERE"
+        },
+
+        {
+            "county": "Cobb",
+            "state": "GA",
+            "url": "PUT_COBB_GA_URL_HERE"
+        },
+
+        {
+            "county": "Dallas",
+            "state": "TX",
+            "url": "PUT_DALLAS_TX_URL_HERE"
+        },
+
+        {
+            "county": "Harris",
+            "state": "TX",
+            "url": "PUT_HARRIS_TX_URL_HERE"
+        }
     ]
+
+    scrapers = []
+
+    for county in COUNTY_SOURCES:
+        scrapers.append(
+            UniversalScraper(
+                county_name=county["county"],
+                state=county["state"],
+                url=county["url"]
+            )
+        )
+
+    return scrapers

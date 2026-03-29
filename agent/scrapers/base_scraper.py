@@ -26,5 +26,10 @@ class BaseScraper:
 
             return html
 
+    def normalize(self, text):
+        if not text:
+            return ""
+        return " ".join(str(text).strip().split())
+
     def scrape(self):
-        raise NotImplementedError("scrape() must be implemented in child class")
+        raise NotImplementedError("scrape() must be implemented in child scraper classes")

@@ -1,4 +1,5 @@
 import requests
+from bs4 import BeautifulSoup
 
 
 class UniversalScraper:
@@ -26,7 +27,7 @@ class UniversalScraper:
         return self.run()
 
 
-    # FIXED: REAL PAGE FETCH (NO MORE CRASH)
+    # FETCH PAGE
     def get_page(self):
         if not self.source_url:
             return ""
@@ -45,7 +46,36 @@ class UniversalScraper:
             return ""
 
 
-    # OUTPUT CONTRACT
+    # 🟢 STEP 3: BASIC WORKING PARSER (REPLACES EMPTY OUTPUT)
+    def parse(self, html):
+        if not html:
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        records = []
+
+        # Generic extraction fallback (works across most basic listing pages)
+        items = soup.find_all("tr") or soup.find_all("li") or soup.find_all("div")
+
+        for i in items:
+            text = i.get_text(strip=True)
+
+            # filter junk noise
+            if not text or len(text) < 10:
+                continue
+
+            records.append({
+                "record_id": text[:60],
+                "amount": None,
+                "owner": None,
+                "url": self.source_url
+            })
+
+        return records
+
+
+    # OUTPUT CONTRACT NORMALIZER
     def normalize(self, records):
         if not records:
             return []
@@ -63,8 +93,3 @@ class UniversalScraper:
             })
 
         return normalized
-
-
-    # KEEP YOUR EXISTING PARSER HERE
-    def parse(self, html):
-        return []

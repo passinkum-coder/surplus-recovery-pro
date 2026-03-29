@@ -1,6 +1,5 @@
 from scrapers.base_scraper import BaseScraper
 from playwright.sync_api import sync_playwright
-from bs4 import BeautifulSoup
 
 
 class MiamiDadeScraper(BaseScraper):
@@ -13,55 +12,59 @@ class MiamiDadeScraper(BaseScraper):
 
 
     def scrape(self):
+        results = []
+
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            page.goto(self.url, wait_until="networkidle")
-            page.wait_for_timeout(5000)
+            captured_json = []
 
-            html = page.content()
+            # 🔥 Capture API responses
+            def handle_response(response):
+                try:
+                    ct = response.headers.get("content-type", "")
+                    if "application/json" in ct:
+                        try:
+                            data = response.json()
+                            captured_json.append(data)
+                        except:
+                            pass
+                except:
+                    pass
+
+            page.on("response", handle_response)
+
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_timeout(8000)
+
             browser.close()
 
-        soup = BeautifulSoup(html, "html.parser")
+        # 🔥 Extract records from captured JSON
+        for item in captured_json:
+            if isinstance(item, list):
+                for r in item:
+                    results.append({
+                        "county": self.county_name,
+                        "state": self.state,
+                        "record_id": str(r.get("id") or r.get("record_id") or r.get("name") or ""),
+                        "owner": r.get("owner") or r.get("name"),
+                        "amount": r.get("amount"),
+                        "url": self.url
+                    })
 
-        records = []
+            elif isinstance(item, dict):
+                # sometimes API wraps data inside keys like "data"
+                for key in ["data", "results", "items"]:
+                    if key in item and isinstance(item[key], list):
+                        for r in item[key]:
+                            results.append({
+                                "county": self.county_name,
+                                "state": self.state,
+                                "record_id": str(r.get("id") or r.get("record_id") or r.get("name") or ""),
+                                "owner": r.get("owner") or r.get("name"),
+                                "amount": r.get("amount"),
+                                "url": self.url
+                            })
 
-        # STEP 1: TRY TABLE PARSING
-        rows = soup.find_all("tr")
-
-        for r in rows:
-            cols = r.find_all("td")
-
-            if len(cols) < 2:
-                continue
-
-            records.append({
-                "county": self.county_name,
-                "state": self.state,
-                "record_id": cols[0].get_text(strip=True) if cols[0] else None,
-                "owner": cols[1].get_text(strip=True) if len(cols) > 1 else None,
-                "amount": cols[2].get_text(strip=True) if len(cols) > 2 else None,
-                "url": self.url
-            })
-
-        # STEP 2: FALLBACK DIV PARSING (IF TABLE EMPTY)
-        if not records:
-            blocks = soup.find_all("div")
-
-            for b in blocks:
-                text = b.get_text(strip=True)
-
-                if not text or len(text) < 15:
-                    continue
-
-                records.append({
-                    "county": self.county_name,
-                    "state": self.state,
-                    "record_id": text[:60],
-                    "owner": None,
-                    "amount": None,
-                    "url": self.url
-                })
-
-        return records
+        return results

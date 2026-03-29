@@ -27,16 +27,13 @@ class UniversalScraper:
         return self.run()
 
 
-    # FETCH PAGE
+    # SAFE FETCHER (NO CRASH)
     def get_page(self):
         if not self.source_url:
             return ""
 
         try:
-            headers = {
-                "User-Agent": "Mozilla/5.0"
-            }
-
+            headers = {"User-Agent": "Mozilla/5.0"}
             response = requests.get(self.source_url, headers=headers, timeout=20)
             response.raise_for_status()
             return response.text
@@ -46,36 +43,23 @@ class UniversalScraper:
             return ""
 
 
-    # 🟢 STEP 3: BASIC WORKING PARSER (REPLACES EMPTY OUTPUT)
+    # DEBUG PARSER (STEP 4 SAFE MODE)
     def parse(self, html):
         if not html:
             return []
 
-        soup = BeautifulSoup(html, "html.parser")
+        print(f"[DEBUG] {self.county_name} HTML size:", len(html))
 
-        records = []
+        try:
+            with open(f"{self.county_name}_debug.html", "w", encoding="utf-8") as f:
+                f.write(html[:20000])
+        except Exception as e:
+            print(f"[WARN] Could not save debug file: {e}")
 
-        # Generic extraction fallback (works across most basic listing pages)
-        items = soup.find_all("tr") or soup.find_all("li") or soup.find_all("div")
-
-        for i in items:
-            text = i.get_text(strip=True)
-
-            # filter junk noise
-            if not text or len(text) < 10:
-                continue
-
-            records.append({
-                "record_id": text[:60],
-                "amount": None,
-                "owner": None,
-                "url": self.source_url
-            })
-
-        return records
+        return []
 
 
-    # OUTPUT CONTRACT NORMALIZER
+    # OUTPUT CONTRACT (STANDARD FORMAT)
     def normalize(self, records):
         if not records:
             return []

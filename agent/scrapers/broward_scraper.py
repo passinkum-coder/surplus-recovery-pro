@@ -1,15 +1,13 @@
 from scrapers.base_scraper import BaseScraper
 
-class MiamiDadeScraper(BaseScraper):
+class BrowardScraper(BaseScraper):
     def __init__(self):
         super().__init__(
-            county_name="Miami-Dade",
+            county_name="Broward",
             state="FL",
             url="https://example.com"
         )
 
     def scrape(self):
         html = self.get_page()
-
-        # placeholder extraction (prevents crash)
         return []

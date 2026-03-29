@@ -1,4 +1,3 @@
-from bs4 import BeautifulSoup
 from scrapers.base_scraper import BaseScraper
 
 
@@ -11,31 +10,23 @@ class MiamiDadeScraper(BaseScraper):
         )
 
     def scrape(self):
-        html = self.get_page()
+        from playwright.sync_api import sync_playwright
 
-        soup = BeautifulSoup(html, "html.parser")
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
 
-        results = []
+            page.goto(self.url, wait_until="networkidle")
 
-        # Try multiple possible table patterns (robust scraping)
-        rows = soup.select("table tr")
+            # wait for ANY visible content container
+            page.wait_for_timeout(5000)
 
-        for row in rows:
-            cols = row.find_all("td")
+            content = page.content()
+            browser.close()
 
-            if len(cols) < 2:
-                continue
-
-            text = self.normalize(cols[0].get_text())
-
-            if not text:
-                continue
-
-            results.append({
-                "county": self.county_name,
-                "state": self.state,
-                "source": self.url,
-                "raw_text": text
-            })
-
-        return results
+        # fallback extraction (simple text capture)
+        return [{
+            "county": self.county_name,
+            "state": self.state,
+            "raw_text": content[:2000]
+        }]

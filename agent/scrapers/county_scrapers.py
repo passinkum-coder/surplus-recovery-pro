@@ -141,8 +141,8 @@ class RichmondScraper(BaseScraper):
             county_name="Richmond",
             url="https://www.augustaga.gov/1235/Excess-Funds"
         )
-
-    def scrape(self):
-        content = self.get_page()
-        records = extract_table(content, self.county_name)
-        return self.normalize(records)
+def load_scrapers():
+    return [
+        CherokeeScraper(),
+        # add your other Georgia counties here
+    ]

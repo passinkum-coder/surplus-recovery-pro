@@ -1,5 +1,6 @@
 from scrapers.base_scraper import BaseScraper
-import requests
+from playwright.sync_api import sync_playwright
+import json
 
 
 class MiamiDadeScraper(BaseScraper):
@@ -11,69 +12,66 @@ class MiamiDadeScraper(BaseScraper):
         )
 
     def scrape(self):
-        session = requests.Session()
+        captured = []
 
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json, text/plain, */*"
-        }
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
 
-        try:
-            # Step 1: initialize session (cookies, tokens if any)
-            session.get(self.url, headers=headers, timeout=30)
-
-            # Step 2: attempt known API-style endpoints
-            endpoints = [
-                self.url + "/Search",
-                self.url + "/GetData",
-                self.url + "/api/search",
-                self.url + "/api/claims"
-            ]
-
-            results = []
-
-            for endpoint in endpoints:
+            # capture ALL responses
+            def handle_response(response):
                 try:
-                    r = session.get(endpoint, headers=headers, timeout=20)
+                    ct = response.headers.get("content-type", "")
+                    if "application/json" in ct:
+                        try:
+                            captured.append(response.json())
+                        except:
+                            pass
+                except:
+                    pass
 
-                    if r.status_code != 200:
-                        continue
+            page.on("response", handle_response)
 
-                    try:
-                        data = r.json()
-                    except:
-                        continue
+            page.goto(self.url, wait_until="networkidle")
 
-                    # CASE 1: list response
-                    if isinstance(data, list):
-                        for item in data:
+            # 🔥 FORCE USER-LIKE ACTIONS
+            page.wait_for_timeout(3000)
+
+            # try triggering any JS search (if exists safely ignored if not found)
+            try:
+                page.keyboard.press("Enter")
+                page.wait_for_timeout(5000)
+            except:
+                pass
+
+            browser.close()
+
+        results = []
+
+        # extract whatever structure exists
+        for item in captured:
+            if isinstance(item, list):
+                for r in item:
+                    results.append({
+                        "county": self.county_name,
+                        "state": self.state,
+                        "record_id": str(r.get("id") or r.get("name")),
+                        "owner": r.get("owner"),
+                        "amount": r.get("amount"),
+                        "url": self.url
+                    })
+
+            elif isinstance(item, dict):
+                for key in ["data", "results", "items"]:
+                    if key in item and isinstance(item[key], list):
+                        for r in item[key]:
                             results.append({
                                 "county": self.county_name,
                                 "state": self.state,
-                                "record_id": item.get("id") or item.get("name"),
-                                "owner": item.get("owner"),
-                                "amount": item.get("amount"),
-                                "url": endpoint
+                                "record_id": str(r.get("id") or r.get("name")),
+                                "owner": r.get("owner"),
+                                "amount": r.get("amount"),
+                                "url": self.url
                             })
 
-                    # CASE 2: dict response
-                    elif isinstance(data, dict):
-                        for key in ["data", "results", "items"]:
-                            if key in data and isinstance(data[key], list):
-                                for item in data[key]:
-                                    results.append({
-                                        "county": self.county_name,
-                                        "state": self.state,
-                                        "record_id": item.get("id") or item.get("name"),
-                                        "owner": item.get("owner"),
-                                        "amount": item.get("amount"),
-                                        "url": endpoint
-                                    })
-
-                except:
-                    continue
-
-            return results
-
-        except Exception:
-            return []
+        return results

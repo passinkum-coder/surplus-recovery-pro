@@ -12,59 +12,36 @@ class MiamiDadeScraper(BaseScraper):
 
 
     def scrape(self):
-        results = []
+        requests_log = []
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            captured_json = []
-
-            # 🔥 Capture API responses
-            def handle_response(response):
+            # 🔥 Capture ALL network requests
+            def log_request(request):
                 try:
-                    ct = response.headers.get("content-type", "")
-                    if "application/json" in ct:
-                        try:
-                            data = response.json()
-                            captured_json.append(data)
-                        except:
-                            pass
+                    requests_log.append({
+                        "method": request.method,
+                        "url": request.url
+                    })
                 except:
                     pass
 
-            page.on("response", handle_response)
+            page.on("request", log_request)
 
             page.goto(self.url, wait_until="networkidle")
             page.wait_for_timeout(8000)
 
             browser.close()
 
-        # 🔥 Extract records from captured JSON
-        for item in captured_json:
-            if isinstance(item, list):
-                for r in item:
-                    results.append({
-                        "county": self.county_name,
-                        "state": self.state,
-                        "record_id": str(r.get("id") or r.get("record_id") or r.get("name") or ""),
-                        "owner": r.get("owner") or r.get("name"),
-                        "amount": r.get("amount"),
-                        "url": self.url
-                    })
+        # 🔥 PRINT ALL REQUESTS (DEBUG OUTPUT)
+        print("\n================ NETWORK REQUESTS ================\n")
 
-            elif isinstance(item, dict):
-                # sometimes API wraps data inside keys like "data"
-                for key in ["data", "results", "items"]:
-                    if key in item and isinstance(item[key], list):
-                        for r in item[key]:
-                            results.append({
-                                "county": self.county_name,
-                                "state": self.state,
-                                "record_id": str(r.get("id") or r.get("record_id") or r.get("name") or ""),
-                                "owner": r.get("owner") or r.get("name"),
-                                "amount": r.get("amount"),
-                                "url": self.url
-                            })
+        for r in requests_log:
+            print(f"[{r['method']}] {r['url']}")
 
-        return results
+        print("\n================ END REQUEST LOG ================\n")
+
+        # IMPORTANT: no parsing yet, only discovery mode
+        return []

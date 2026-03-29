@@ -1,31 +1,34 @@
-import requests
+import time
+from playwright.sync_api import sync_playwright
+
 
 class BaseScraper:
-    def __init__(self, county_name=None, state=None, url=None):
+    def __init__(self, county_name=None, state=None):
         self.county_name = county_name
         self.state = state
-        self.url = url
 
-    def scrape(self):
-        raise NotImplementedError
-
-    def get_page(self, url=None, **kwargs):
+    def get_page(self, url):
         """
-        SAFE:
-        - works with self.get_page()
-        - works with self.get_page(self.url)
-        - works with explicit URL
+        Fetch page HTML using a real browser (bypasses 403 blocks)
         """
-
-        target_url = url or self.url
-
-        if not target_url:
-            raise ValueError(
-                f"{self.__class__.__name__} has no URL (pass url or set self.url)"
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox"]
             )
 
-        headers = {"User-Agent": "Mozilla/5.0"}
+            page = browser.new_page()
 
-        response = requests.get(target_url, headers=headers, timeout=15)
-        response.raise_for_status()
-        return response.text
+            # Go to page and wait for full load
+            page.goto(url, wait_until="networkidle", timeout=60000)
+
+            html = page.content()
+
+            browser.close()
+            return html
+
+    def scrape(self):
+        """
+        Override this in each county scraper
+        """
+        raise NotImplementedError("scrape() must be implemented in child class")

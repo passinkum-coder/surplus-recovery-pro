@@ -1,6 +1,5 @@
 from scrapers.base_scraper import BaseScraper
 import requests
-from bs4 import BeautifulSoup
 
 
 class MiamiDadeScraper(BaseScraper):
@@ -12,61 +11,69 @@ class MiamiDadeScraper(BaseScraper):
         )
 
     def scrape(self):
+        session = requests.Session()
+
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36"
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json, text/plain, */*"
         }
 
         try:
-            response = requests.get(self.url, headers=headers, timeout=30)
-            html = response.text
-        except Exception:
-            return []
+            # Step 1: initialize session (cookies, tokens if any)
+            session.get(self.url, headers=headers, timeout=30)
 
-        soup = BeautifulSoup(html, "html.parser")
+            # Step 2: attempt known API-style endpoints
+            endpoints = [
+                self.url + "/Search",
+                self.url + "/GetData",
+                self.url + "/api/search",
+                self.url + "/api/claims"
+            ]
 
-        results = []
+            results = []
 
-        # ----------------------------
-        # STEP 1: TABLE EXTRACTION
-        # ----------------------------
-        rows = soup.find_all("tr")
+            for endpoint in endpoints:
+                try:
+                    r = session.get(endpoint, headers=headers, timeout=20)
 
-        for row in rows:
-            cols = row.find_all("td")
+                    if r.status_code != 200:
+                        continue
 
-            if len(cols) < 2:
-                continue
+                    try:
+                        data = r.json()
+                    except:
+                        continue
 
-            results.append({
-                "county": self.county_name,
-                "state": self.state,
-                "record_id": cols[0].get_text(strip=True),
-                "owner": cols[1].get_text(strip=True) if len(cols) > 1 else None,
-                "amount": cols[2].get_text(strip=True) if len(cols) > 2 else None,
-                "url": self.url
-            })
+                    # CASE 1: list response
+                    if isinstance(data, list):
+                        for item in data:
+                            results.append({
+                                "county": self.county_name,
+                                "state": self.state,
+                                "record_id": item.get("id") or item.get("name"),
+                                "owner": item.get("owner"),
+                                "amount": item.get("amount"),
+                                "url": endpoint
+                            })
 
-        # ----------------------------
-        # STEP 2: GENERIC DIV FALLBACK
-        # ----------------------------
-        if not results:
-            blocks = soup.find_all("div")
+                    # CASE 2: dict response
+                    elif isinstance(data, dict):
+                        for key in ["data", "results", "items"]:
+                            if key in data and isinstance(data[key], list):
+                                for item in data[key]:
+                                    results.append({
+                                        "county": self.county_name,
+                                        "state": self.state,
+                                        "record_id": item.get("id") or item.get("name"),
+                                        "owner": item.get("owner"),
+                                        "amount": item.get("amount"),
+                                        "url": endpoint
+                                    })
 
-            for b in blocks:
-                text = b.get_text(" ", strip=True)
-
-                if len(text) < 20:
+                except:
                     continue
 
-                # only keep meaningful chunks
-                if any(keyword in text.lower() for keyword in ["property", "claim", "owner", "amount", "unclaimed"]):
-                    results.append({
-                        "county": self.county_name,
-                        "state": self.state,
-                        "record_id": text[:80],
-                        "owner": None,
-                        "amount": None,
-                        "url": self.url
-                    })
+            return results
 
-        return results
+        except Exception:
+            return []

@@ -1,51 +1,53 @@
-from scrapers.base_scraper import BaseScraper
+class UniversalScraper:
+    def __init__(self, county_name=None, source_url=None, *args, **kwargs):
+        self.county_name = county_name
+        self.source_url = source_url
 
 
-class UniversalScraper(BaseScraper):
-    def __init__(self, county_name: str, state: str, url: str):
-        super().__init__(
-            county_name=county_name,
-            state=state,
-            url=url
-        )
+    # MAIN ENTRY POINT
+    def run(self):
+        html = self.get_page()
+        records = self.parse(html)
+        return self.normalize(records)
+
 
     def scrape(self):
-        """
-        Universal scraper v2:
-        - Works for ALL counties
-        - Uses Playwright fallback extraction
-        - No site-specific logic needed
-        """
+        return self.run()
 
-        from playwright.sync_api import sync_playwright
 
-        html = ""
+    def fetch(self):
+        return self.run()
 
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
 
-                page.goto(self.url, wait_until="networkidle")
+    def get_data(self):
+        return self.run()
 
-                # allow JS rendering
-                page.wait_for_timeout(5000)
 
-                html = page.content()
+    # NORMALIZER (STANDARD OUTPUT CONTRACT)
+    def normalize(self, records):
+        if not records:
+            return []
 
-                browser.close()
+        normalized = []
 
-        except Exception as e:
-            return [{
+        for r in records:
+            normalized.append({
                 "county": self.county_name,
-                "state": self.state,
-                "error": str(e),
-                "raw_text": ""
-            }]
+                "source": self.source_url,
+                "record_id": r.get("record_id"),
+                "amount": r.get("amount"),
+                "owner": r.get("owner"),
+                "url": r.get("url")
+            })
 
-        # fallback extraction (simple safe universal output)
-        return [{
-            "county": self.county_name,
-            "state": self.state,
-            "raw_text": html[:3000]
-        }]
+        return normalized
+
+
+    # PLACEHOLDER: KEEP YOUR EXISTING IMPLEMENTATION IF YOU ALREADY HAVE ONE
+    def get_page(self):
+        raise NotImplementedError("get_page() must be implemented per scraper")
+
+
+    # PLACEHOLDER: KEEP YOUR EXISTING PARSE LOGIC
+    def parse(self, html):
+        raise NotImplementedError("parse() must be implemented per scraper")

@@ -65,13 +65,6 @@ class DeKalbScraper(BaseScraper):
         )
 
     def scrape(self):
-        content = self.get_page()
-        records = extract_table(content, self.county_name)
-        return self.normalize(records)
-
-
-class CherokeeScraper(BaseScraper):
-    def scrape(self):
     html = self.get_page()
 
     from bs4 import BeautifulSoup

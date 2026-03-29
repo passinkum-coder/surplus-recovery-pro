@@ -24,3 +24,6 @@ class BexarScraper(BaseScraper):
 class TravisScraper(BaseScraper):
     def __init__(self):
         super().__init__(county_name="Travis", state="TX")
+
+def load_scrapers():
+    return []

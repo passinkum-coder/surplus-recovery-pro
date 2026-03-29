@@ -10,10 +10,8 @@ def upsert_records(records):
 def run_all_scrapers():
     scrapers = []
 
-    # Load all states
-    scrapers += load_ga()
-    scrapers += load_fl()
-    scrapers += load_tx()
+    # Load all states (UNIFIED SYSTEM)
+scrapers = load_scrapers()
 
     print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
 

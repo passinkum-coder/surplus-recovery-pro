@@ -1,26 +1,16 @@
-from scrapers.base_scraper import BaseScraper
+from scrapers.miami_dade_scraper import MiamiDadeScraper
+from scrapers.broward_scraper import BrowardScraper
+from scrapers.palm_beach_scraper import PalmBeachScraper
+
+# If these are defined INSIDE this file, do NOT import them
+# just include them below
 
 
-class MiamiDadeScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(county_name="Miami-Dade")
-
-
-class BrowardScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(county_name="Broward")
-
-
-class PalmBeachScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(county_name="Palm Beach")
-
-
-class HillsboroughScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(county_name="Hillsborough")
-
-
-class OrangeScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(county_name="Orange")
+def load_scrapers():
+    return [
+        MiamiDadeScraper(),
+        BrowardScraper(),
+        PalmBeachScraper(),
+        HillsboroughScraper(),
+        OrangeCountyScraper(),
+    ]

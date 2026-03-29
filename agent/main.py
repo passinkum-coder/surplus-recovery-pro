@@ -32,16 +32,11 @@ for scraper in scrapers:
     try:
         records = scraper.scrape()
 
-print("-----")
-print("COUNTY:", scraper.county_name)
-print("RECORDS:", records)
-print("COUNT:", len(records) if records else 0)
-print("-----")
-
-if records:
-    upsert_records(records)
-
-        print(records)
+        print("-----")
+        print("COUNTY:", scraper.county_name)
+        print("RECORDS:", records)
+        print("COUNT:", len(records) if records else 0)
+        print("-----")
 
         if records:
             upsert_records(records)

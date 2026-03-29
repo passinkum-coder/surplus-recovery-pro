@@ -2,9 +2,10 @@ from playwright.sync_api import sync_playwright
 
 
 class BaseScraper:
-    def __init__(self, county_name=None, state=None):
+    def __init__(self, county_name=None, state=None, url=None):
         self.county_name = county_name
         self.state = state
+        self.url = url
 
     def get_page(self, url):
         """

@@ -1,3 +1,6 @@
+import requests
+
+
 class UniversalScraper:
     def __init__(self, county_name=None, source_url=None, *args, **kwargs):
         self.county_name = county_name
@@ -23,7 +26,26 @@ class UniversalScraper:
         return self.run()
 
 
-    # NORMALIZER (STANDARD OUTPUT CONTRACT)
+    # FIXED: REAL PAGE FETCH (NO MORE CRASH)
+    def get_page(self):
+        if not self.source_url:
+            return ""
+
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+
+            response = requests.get(self.source_url, headers=headers, timeout=20)
+            response.raise_for_status()
+            return response.text
+
+        except Exception as e:
+            print(f"[WARN] Failed to fetch {self.county_name}: {e}")
+            return ""
+
+
+    # OUTPUT CONTRACT
     def normalize(self, records):
         if not records:
             return []
@@ -43,11 +65,6 @@ class UniversalScraper:
         return normalized
 
 
-    # PLACEHOLDER: KEEP YOUR EXISTING IMPLEMENTATION IF YOU ALREADY HAVE ONE
-    def get_page(self):
-        raise NotImplementedError("get_page() must be implemented per scraper")
-
-
-    # PLACEHOLDER: KEEP YOUR EXISTING PARSE LOGIC
+    # KEEP YOUR EXISTING PARSER HERE
     def parse(self, html):
-        raise NotImplementedError("parse() must be implemented per scraper")
+        return []

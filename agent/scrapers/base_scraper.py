@@ -9,11 +9,23 @@ class BaseScraper:
     def scrape(self):
         raise NotImplementedError
 
-    def get_page(self, url, timeout=15):
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+    def get_page(self, url=None, **kwargs):
+        """
+        SAFE:
+        - works with self.get_page()
+        - works with self.get_page(self.url)
+        - works with explicit URL
+        """
 
-        response = requests.get(url, headers=headers, timeout=timeout)
+        target_url = url or self.url
+
+        if not target_url:
+            raise ValueError(
+                f"{self.__class__.__name__} has no URL (pass url or set self.url)"
+            )
+
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        response = requests.get(target_url, headers=headers, timeout=15)
         response.raise_for_status()
         return response.text

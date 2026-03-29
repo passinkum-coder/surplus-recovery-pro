@@ -1,11 +1,15 @@
 from playwright.sync_api import sync_playwright
 
+
 class BaseScraper:
     def __init__(self, county_name=None, state=None):
         self.county_name = county_name
         self.state = state
 
     def get_page(self, url):
+        """
+        Fetch page HTML using Playwright (bypasses most 403 blocks)
+        """
         with sync_playwright() as p:
             browser = p.chromium.launch(
                 headless=True,
@@ -13,6 +17,7 @@ class BaseScraper:
             )
 
             page = browser.new_page()
+
             page.goto(url, wait_until="networkidle", timeout=60000)
 
             html = page.content()

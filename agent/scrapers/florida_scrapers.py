@@ -2,9 +2,34 @@ from scrapers.miami_dade_scraper import MiamiDadeScraper
 from scrapers.broward_scraper import BrowardScraper
 from scrapers.palm_beach_scraper import PalmBeachScraper
 
-# If these are defined INSIDE this file, do NOT import them
-# just include them below
 
+# =========================
+# FLORIDA COUNTY SCRAPERS
+# =========================
+
+class HillsboroughScraper:
+    def __init__(self):
+        self.county_name = "Hillsborough"
+        self.state = "FL"
+
+    def scrape(self):
+        # TODO: add real logic if needed
+        return []
+
+
+class OrangeCountyScraper:
+    def __init__(self):
+        self.county_name = "Orange"
+        self.state = "FL"
+
+    def scrape(self):
+        # TODO: add real logic if needed
+        return []
+
+
+# =========================
+# LOADER
+# =========================
 
 def load_scrapers():
     return [

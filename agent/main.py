@@ -13,7 +13,7 @@ def run_all_scrapers():
     # Load all states (UNIFIED SYSTEM)
 scrapers = load_scrapers()
 
-    print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
+print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
 
     for scraper in scrapers:
         print("\n============================")

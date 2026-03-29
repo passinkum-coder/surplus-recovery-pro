@@ -2,77 +2,46 @@ from scrapers.universal_scraper import UniversalScraper
 
 
 def load_scrapers():
+    """
+    SINGLE SOURCE OF TRUTH
+    - prevents duplicates
+    - guarantees one scraper per county
+    - no external registry conflicts
+    """
 
     COUNTY_SOURCES = [
-        {
-            "county": "Miami-Dade",
-            "state": "FL",
-            "url": "https://www.miamidade.gov/Apps/PA/PAClaims/Home/UnclaimedProperty"
-        },
+        ("Miami-Dade", "FL", "https://www.miamidade.gov/Apps/PA/PAClaims/Home/UnclaimedProperty"),
+        ("Broward", "FL", "PUT_BROWARD_URL_HERE"),
+        ("Palm Beach", "FL", "PUT_PALM_BEACH_URL_HERE"),
+        ("Hillsborough", "FL", "PUT_HILLSBOROUGH_URL_HERE"),
+        ("Orange", "FL", "PUT_ORANGE_URL_HERE"),
 
-        {
-            "county": "Broward",
-            "state": "FL",
-            "url": "PUT_BROWARD_URL_HERE"
-        },
+        ("Fulton", "GA", "PUT_FULTON_URL_HERE"),
+        ("Cobb", "GA", "PUT_COBB_URL_HERE"),
+        ("Cherokee", "GA", "PUT_CHEROKEE_URL_HERE"),
 
-        {
-            "county": "Palm Beach",
-            "state": "FL",
-            "url": "PUT_PALM_BEACH_URL_HERE"
-        },
-
-        {
-            "county": "Hillsborough",
-            "state": "FL",
-            "url": "PUT_HILLSBOROUGH_URL_HERE"
-        },
-
-        {
-            "county": "Orange",
-            "state": "FL",
-            "url": "PUT_ORANGE_FL_URL_HERE"
-        },
-
-        {
-            "county": "Cherokee",
-            "state": "GA",
-            "url": "PUT_CHEROKEE_GA_URL_HERE"
-        },
-
-        {
-            "county": "Fulton",
-            "state": "GA",
-            "url": "PUT_FULTON_GA_URL_HERE"
-        },
-
-        {
-            "county": "Cobb",
-            "state": "GA",
-            "url": "PUT_COBB_GA_URL_HERE"
-        },
-
-        {
-            "county": "Dallas",
-            "state": "TX",
-            "url": "PUT_DALLAS_TX_URL_HERE"
-        },
-
-        {
-            "county": "Harris",
-            "state": "TX",
-            "url": "PUT_HARRIS_TX_URL_HERE"
-        }
+        ("Harris", "TX", "PUT_HARRIS_URL_HERE"),
+        ("Dallas", "TX", "PUT_DALLAS_URL_HERE"),
     ]
 
     scrapers = []
 
-    for county in COUNTY_SOURCES:
+    seen = set()  # 🔥 HARD GUARANTEE AGAINST DUPLICATES
+
+    for county, state, url in COUNTY_SOURCES:
+
+        key = f"{county}-{state}"
+
+        if key in seen:
+            continue  # prevents duplicates safely
+
+        seen.add(key)
+
         scrapers.append(
             UniversalScraper(
-                county_name=county["county"],
-                state=county["state"],
-                url=county["url"]
+                county_name=county,
+                state=state,
+                url=url
             )
         )
 

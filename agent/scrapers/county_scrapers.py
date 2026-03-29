@@ -71,11 +71,35 @@ class DeKalbScraper(BaseScraper):
 
 
 class CherokeeScraper(BaseScraper):
-    def __init__(self):
-        super().__init__(
-            county_name="Cherokee",
-            url="https://www.cherokeega.com/Tax-Commissioner/Excess-Funds/"
-        )
+    def scrape(self):
+    html = self.get_page()
+
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+
+    results = []
+
+    elements = soup.find_all(["li", "p", "div", "tr"])
+
+    for el in elements:
+        text = self.normalize(el.get_text())
+
+        if not text or len(text) < 12:
+            continue
+
+        keywords = [
+            "tax", "sale", "excess", "fund", "property",
+            "owner", "parcel", "amount", "$"
+        ]
+
+        if any(k in text.lower() for k in keywords):
+            results.append({
+                "county": self.county_name,
+                "state": self.state,
+                "data": text
+            })
+
+    return results
 
     def scrape(self):
         content = self.get_page()

@@ -1,116 +1,30 @@
-from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
-import time
-
-from agent.engine.state_registry import STATE_STRATEGY
-
-
-class AdaptiveScraperEngine:
-
-    def __init__(self):
-        print("🚀 Adaptive Engine Initialized")
-
-    # =========================================================
-    # MAIN ENTRY POINT
-    # =========================================================
-    def run_search(self, state: str, counties: list, query: str, config: dict):
-
-        print("\n🚀 STARTING SEARCH PIPELINE")
-        print("=" * 50)
-
-        state = state.lower().strip()
-
-        strategy = STATE_STRATEGY.get(state, "dom_form")
-
-        print(f"🧭 Strategy selected for {state}: {strategy}")
-        print(f"🔎 Query: {query}")
-        print(f"🏘 Counties: {len(counties)}")
-
-        results = []
-
-        # =========================================================
-        # ROUTER
-        # =========================================================
-        if strategy == "dom_form":
-
-            if state == "texas":
-                results = self._run_texas(counties, query, config)
-            else:
-                results = self._run_dom_generic(state, counties, query, config)
-
-        elif strategy == "api":
-            results = self._run_api(state, counties, query, config)
-
-        elif strategy == "hybrid":
-            results = self._run_hybrid(state, counties, query, config)
-
-        else:
-            print("⚠️ Unknown strategy → defaulting to DOM")
-            results = self._run_dom_generic(state, counties, query, config)
-
-        print("\n========================")
-        print("PIPELINE COMPLETE")
-        print("========================")
-        print("TOTAL RESULTS:", len(results))
-
-        return {
-            "state": state,
-            "strategy": strategy,
-            "total_results": len(results),
-            "results": results
-        }
-
-    # =========================================================
-    # TEXAS (REAL IMPLEMENTATION)
-    # =========================================================
-    def _run_texas(self, counties, query, config):
-        print("🇺🇸 Running REAL Texas scraper via adaptive engine")
-
-        from sources.texas_unclaimed import TexasUnclaimed
-
-        tx = TexasUnclaimed()
-
-        data = tx.run(max_records=50)
-
-        print(f"TEXAS RECORDS FOUND: {len(data)}")
-
-        return data
-
-    # =========================================================
-    # GENERIC DOM SCRAPER (FLORIDA, ETC)
-    # =========================================================
-    def _run_dom_generic(self, state, counties, query, config):
+def _run_dom_generic(self, state, counties, query, config):
 
     print(f"🏛 Running DOM scraper for {state}...")
 
-    state = state.lower()
+    # Normalize state input
+    state = (state or "").strip().lower()
 
     # -----------------------------
-    # FLORIDA REAL SCRAPER
+    # FLORIDA IMPLEMENTATION
     # -----------------------------
     if state == "florida":
-        from sources.florida_unclaimed import FloridaUnclaimed
+        try:
+            from sources.florida_unclaimed import FloridaUnclaimed
 
-        fl = FloridaUnclaimed()
-        data = fl.run(max_records=50)
+            scraper = FloridaUnclaimed()
+            data = scraper.run(max_records=50)
 
-        return data
+            print(f"🌴 Florida records found: {len(data)}")
+
+            return data
+
+        except Exception as e:
+            print(f"❌ Florida scraper failed: {e}")
+            return []
 
     # -----------------------------
-    # DEFAULT EMPTY FOR OTHER STATES
+    # DEFAULT FALLBACK (OTHER STATES)
     # -----------------------------
+    print(f"⚠ No scraper implemented for state: {state}")
     return []
-
-    # =========================================================
-    # API SCRAPER
-    # =========================================================
-    def _run_api(self, state, counties, query, config):
-        print(f"🌐 Running API scraper for {state}...")
-        return []
-
-    # =========================================================
-    # HYBRID SCRAPER
-    # =========================================================
-    def _run_hybrid(self, state, counties, query, config):
-        print(f"⚡ Running hybrid scraper for {state}...")
-        return []

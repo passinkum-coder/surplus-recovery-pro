@@ -80,8 +80,26 @@ class AdaptiveScraperEngine:
     # GENERIC DOM SCRAPER (FLORIDA, ETC)
     # =========================================================
     def _run_dom_generic(self, state, counties, query, config):
-        print(f"🏛 Running generic DOM scraper for {state}...")
-        return []
+
+    print(f"🏛 Running DOM scraper for {state}...")
+
+    state = state.lower()
+
+    # -----------------------------
+    # FLORIDA REAL SCRAPER
+    # -----------------------------
+    if state == "florida":
+        from sources.florida_unclaimed import FloridaUnclaimed
+
+        fl = FloridaUnclaimed()
+        data = fl.run(max_records=50)
+
+        return data
+
+    # -----------------------------
+    # DEFAULT EMPTY FOR OTHER STATES
+    # -----------------------------
+    return []
 
     # =========================================================
     # API SCRAPER

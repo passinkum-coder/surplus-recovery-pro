@@ -1,10 +1,7 @@
 import os
 
-# --- EXISTING SCRAPER IMPORT ---
 from scrapers.county_scrapers import load_scrapers
-
-# --- NEW STATE DATA SOURCE ---
-from sources.texas_unclaimed import TexasUnclaimed
+from agent.engine.adaptive_engine import AdaptiveScraperEngine
 
 
 def run_county_scrapers():
@@ -28,36 +25,38 @@ def run_county_scrapers():
 
             if data:
                 print(f"Upserting: {len(data)}")
-                # 👉 plug your Supabase insert here later
 
         except Exception as e:
             print(f"ERROR in {scraper.county_name}: {e}")
 
 
-def run_texas_pipeline():
+def run_state_pipeline():
     print("\n========================================")
-    print("RUNNING STATE PIPELINE: TEXAS")
+    print("RUNNING STATE PIPELINE (ADAPTIVE)")
     print("========================================")
 
-    tx = TexasUnclaimed()
+    engine = AdaptiveScraperEngine()
 
-    data = tx.run(max_records=50)
+    # You can later replace this with dynamic input
+    state = "texas"
+    counties = []
+    query = "JOHN"
+    config = {}
 
-    print(f"\nTEXAS RECORDS FOUND: {len(data)}")
+    result = engine.run_search(state, counties, query, config)
 
-    if data:
-        print(f"Upserting: {len(data)}")
-        # 👉 plug your Supabase insert here later
+    print("\nFINAL RESULT:")
+    print(result)
 
 
 def main():
     print("\n🚀 STARTING DATA PIPELINE\n")
 
-    # --- RUN OLD SYSTEM (safe to keep) ---
+    # OLD SYSTEM (optional keep for now)
     run_county_scrapers()
 
-    # --- RUN NEW SYSTEM (REAL DATA) ---
-    run_texas_pipeline()
+    # NEW SYSTEM (THIS IS THE FIX)
+    run_state_pipeline()
 
     print("\n✅ PIPELINE COMPLETE\n")
 

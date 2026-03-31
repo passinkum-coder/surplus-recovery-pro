@@ -8,7 +8,7 @@ class TexasUnclaimed:
         self.captured_responses = []
 
     def run(self, max_records=50):
-        print("\n🚀 STARTING TEXAS FULL NETWORK TAP PIPELINE")
+        print("\n🚀 STARTING TEXAS NETWORK CAPTURE PIPELINE")
         print("=" * 60)
 
         results = []
@@ -17,9 +17,9 @@ class TexasUnclaimed:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            # =========================================================
-            # REQUEST CAPTURE (THIS IS WHAT WAS MISSING BEFORE)
-            # =========================================================
+            # ==============================
+            # REQUEST CAPTURE
+            # ==============================
             def handle_request(request):
                 try:
                     url = request.url
@@ -31,7 +31,6 @@ class TexasUnclaimed:
                     except:
                         pass
 
-                    # log ONLY meaningful traffic (not assets)
                     if any(x in url.lower() for x in ["sws", "search", "claim", "query", "api"]):
                         print("\n🔥 REQUEST CAPTURED")
                         print("METHOD:", method)
@@ -48,9 +47,9 @@ class TexasUnclaimed:
                 except:
                     pass
 
-            # =========================================================
+            # ==============================
             # RESPONSE CAPTURE
-            # =========================================================
+            # ==============================
             def handle_response(response):
                 try:
                     url = response.url
@@ -76,22 +75,21 @@ class TexasUnclaimed:
                 except:
                     pass
 
-            # attach BOTH hooks (critical fix)
             page.on("request", handle_request)
             page.on("response", handle_response)
 
-            # =========================================================
+            # ==============================
             # LOAD PAGE
-            # =========================================================
+            # ==============================
             print("📡 Loading Texas ClaimIt page...")
             page.goto(self.url, wait_until="networkidle")
 
             page.wait_for_timeout(3000)
 
-            # =========================================================
-            # SEARCH ACTION (more reliable than Enter)
-            # =========================================================
-            print("🔍 Finding input field...")
+            # ==============================
+            # SEARCH FLOW (FIXED)
+            # ==============================
+            print("🔍 Locating input field...")
 
             inputs = page.query_selector_all("input")
             if not inputs:
@@ -104,36 +102,47 @@ class TexasUnclaimed:
             print("✍️ Typing search query: JOHN")
             search.fill("john")
 
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(1500)
 
-            print("🖱 Triggering search (Enter + blur fallback)")
-            search.press("Enter")
+            print("🖱 Attempting to trigger search via button click...")
 
-            # fallback trigger (important for Angular apps)
-            page.mouse.click(10, 10)
+            buttons = page.query_selector_all("button")
+            clicked = False
 
-            print("⏳ Waiting for API calls...")
-            page.wait_for_timeout(10000)
+            for b in buttons:
+                try:
+                    txt = (b.inner_text() or "").lower()
+                    if "search" in txt or "find" in txt or "submit" in txt:
+                        b.click()
+                        clicked = True
+                        print("✅ Search button clicked")
+                        break
+                except:
+                    pass
+
+            if not clicked:
+                print("⚠️ No search button found — fallback click center")
+                page.mouse.click(400, 300)
+
+            print("⏳ Waiting for API responses...")
+            page.wait_for_timeout(12000)
 
             browser.close()
 
-        # =========================================================
+        # ==============================
         # PROCESS RESULTS
-        # =========================================================
+        # ==============================
         print("\n========================")
         print("PROCESSING CAPTURED DATA")
         print("========================")
 
-        # merge all response payloads
         for r in self.captured_responses:
             data = r.get("data")
 
             if isinstance(data, list):
-                for item in data:
-                    results.append(item)
+                results.extend(data)
 
             elif isinstance(data, dict):
-                # try common API keys
                 for key in ["data", "results", "items", "records"]:
                     if key in data and isinstance(data[key], list):
                         results.extend(data[key])

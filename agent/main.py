@@ -41,7 +41,7 @@ def run_texas_pipeline():
 
     tx = TexasUnclaimed()
 
-    data = tx.run(max_pages=3)
+    data = tx.run(max_records=50)
 
     print(f"\nTEXAS RECORDS FOUND: {len(data)}")
 

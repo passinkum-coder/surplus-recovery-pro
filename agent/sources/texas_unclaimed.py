@@ -4,11 +4,9 @@ from playwright.sync_api import sync_playwright
 class TexasUnclaimed:
     def __init__(self):
         self.url = "https://www.claimittexas.gov/app/claim-search"
-        self.captured_requests = []
-        self.captured_responses = []
 
     def run(self, max_records=50):
-        print("\n🚀 STARTING TEXAS NETWORK CAPTURE PIPELINE")
+        print("\n🚀 STARTING TEXAS FORM-BASED PIPELINE")
         print("=" * 60)
 
         results = []
@@ -17,141 +15,98 @@ class TexasUnclaimed:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            # ==============================
-            # REQUEST CAPTURE
-            # ==============================
-            def handle_request(request):
-                try:
-                    url = request.url
-                    method = request.method
-
-                    post_data = None
-                    try:
-                        post_data = request.post_data
-                    except:
-                        pass
-
-                    if any(x in url.lower() for x in ["sws", "search", "claim", "query", "api"]):
-                        print("\n🔥 REQUEST CAPTURED")
-                        print("METHOD:", method)
-                        print("URL:", url)
-                        if post_data:
-                            print("POST DATA:", post_data)
-
-                        self.captured_requests.append({
-                            "url": url,
-                            "method": method,
-                            "post_data": post_data
-                        })
-
-                except:
-                    pass
-
-            # ==============================
-            # RESPONSE CAPTURE
-            # ==============================
-            def handle_response(response):
-                try:
-                    url = response.url
-
-                    if any(x in url.lower() for x in ["sws", "search", "claim", "query", "api"]):
-                        try:
-                            content_type = response.headers.get("content-type", "")
-
-                            if "application/json" in content_type:
-                                data = response.json()
-
-                                print("\n📡 RESPONSE CAPTURED")
-                                print("URL:", url)
-
-                                self.captured_responses.append({
-                                    "url": url,
-                                    "data": data
-                                })
-
-                        except:
-                            pass
-
-                except:
-                    pass
-
-            page.on("request", handle_request)
-            page.on("response", handle_response)
-
-            # ==============================
+            # -----------------------------
             # LOAD PAGE
-            # ==============================
-            print("📡 Loading Texas ClaimIt page...")
+            # -----------------------------
+            print("📡 Loading page...")
             page.goto(self.url, wait_until="networkidle")
-
             page.wait_for_timeout(3000)
 
-            # ==============================
-            # SEARCH FLOW (FIXED)
-            # ==============================
-            print("🔍 Locating input field...")
-
+            # -----------------------------
+            # FIND FORM FIELDS (CRITICAL FIX)
+            # -----------------------------
             inputs = page.query_selector_all("input")
-            if not inputs:
-                print("❌ No input fields found")
+
+            last_name = None
+            first_name = None
+
+            for i in inputs:
+                try:
+                    name = (i.get_attribute("name") or "").lower()
+                    placeholder = (i.get_attribute("placeholder") or "").lower()
+
+                    if "last" in name or "last" in placeholder:
+                        last_name = i
+                    elif "first" in name or "first" in placeholder:
+                        first_name = i
+                except:
+                    pass
+
+            if not last_name:
+                print("❌ Last name field not found")
                 browser.close()
                 return []
 
-            search = inputs[0]
+            # -----------------------------
+            # FILL FORM PROPERLY
+            # -----------------------------
+            print("✍️ Filling last name: JOHN")
+            last_name.fill("john")
 
-            print("✍️ Typing search query: JOHN")
-            search.fill("john")
+            if first_name:
+                print("✍️ Filling first name: TEST")
+                first_name.fill("test")
 
-            page.wait_for_timeout(1500)
+            page.wait_for_timeout(1000)
 
-            print("🖱 Attempting to trigger search via button click...")
+            # -----------------------------
+            # SUBMIT FORM (REAL TRIGGER)
+            # -----------------------------
+            print("🖱 Submitting form...")
 
             buttons = page.query_selector_all("button")
-            clicked = False
 
+            submitted = False
             for b in buttons:
                 try:
                     txt = (b.inner_text() or "").lower()
-                    if "search" in txt or "find" in txt or "submit" in txt:
+                    if "search" in txt or "submit" in txt or "find" in txt:
                         b.click()
-                        clicked = True
-                        print("✅ Search button clicked")
+                        submitted = True
+                        print("✅ Form submitted via button")
                         break
                 except:
                     pass
 
-            if not clicked:
-                print("⚠️ No search button found — fallback click center")
-                page.mouse.click(400, 300)
+            if not submitted:
+                print("⚠️ No submit button found — pressing Enter fallback")
+                page.keyboard.press("Enter")
 
-            print("⏳ Waiting for API responses...")
-            page.wait_for_timeout(12000)
+            # -----------------------------
+            # WAIT FOR UI UPDATE (NOT NETWORK)
+            # -----------------------------
+            page.wait_for_timeout(8000)
+
+            # -----------------------------
+            # SCRAPE RESULTS FROM DOM (IMPORTANT FIX)
+            # -----------------------------
+            print("📊 Extracting results from page DOM...")
+
+            rows = page.query_selector_all("table tr, .result, .record, li")
+
+            for r in rows:
+                try:
+                    text = r.inner_text().strip()
+                    if text and len(text) > 5:
+                        results.append({"text": text})
+                except:
+                    pass
 
             browser.close()
-
-        # ==============================
-        # PROCESS RESULTS
-        # ==============================
-        print("\n========================")
-        print("PROCESSING CAPTURED DATA")
-        print("========================")
-
-        for r in self.captured_responses:
-            data = r.get("data")
-
-            if isinstance(data, list):
-                results.extend(data)
-
-            elif isinstance(data, dict):
-                for key in ["data", "results", "items", "records"]:
-                    if key in data and isinstance(data[key], list):
-                        results.extend(data[key])
 
         print("\n========================")
         print("FINAL RESULTS")
         print("========================")
-        print("REQUESTS CAPTURED:", len(self.captured_requests))
-        print("RESPONSES CAPTURED:", len(self.captured_responses))
         print("TOTAL RECORDS:", len(results))
 
         return results[:max_records]

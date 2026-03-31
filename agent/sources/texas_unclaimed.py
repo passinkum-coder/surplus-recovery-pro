@@ -1,5 +1,4 @@
 from playwright.sync_api import sync_playwright
-import json
 
 
 class TexasUnclaimed:
@@ -7,55 +6,26 @@ class TexasUnclaimed:
         self.url = "https://claimittexas.gov/app/claim-search"
 
     def run(self, max_records=50):
-        results = []
+
+        captured = []
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            print("Loading Texas site...")
+            def log_request(request):
+                print("REQ:", request.method, request.url)
 
-            captured_payloads = []
+            def log_response(response):
+                print("RES:", response.status, response.url)
 
-            # INTERCEPT NETWORK RESPONSES
-            def handle_response(response):
-                try:
-                    if "application/json" in response.headers.get("content-type", ""):
-                        data = response.json()
-                        captured_payloads.append(data)
-                except:
-                    pass
-
-            page.on("response", handle_response)
+            page.on("request", log_request)
+            page.on("response", log_response)
 
             page.goto(self.url, wait_until="networkidle")
-            page.wait_for_timeout(8000)
+            page.wait_for_timeout(10000)
 
             browser.close()
 
-        # EXTRACT ANY STRUCTURED DATA FOUND
-        for payload in captured_payloads:
-            if isinstance(payload, list):
-                for item in payload:
-                    if len(results) >= max_records:
-                        break
-
-                    results.append({
-                        "raw": item,
-                        "state": "Texas"
-                    })
-
-            elif isinstance(payload, dict):
-                for k, v in payload.items():
-                    if isinstance(v, list):
-                        for item in v:
-                            if len(results) >= max_records:
-                                break
-
-                            results.append({
-                                "raw": item,
-                                "state": "Texas"
-                            })
-
-        print(f"Texas total records: {len(results)}")
-        return results
+        print("DONE DEBUG RUN")
+        return []

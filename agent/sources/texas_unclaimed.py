@@ -1,13 +1,9 @@
 from playwright.sync_api import sync_playwright
-import json
-import re
 
 
 class TexasUnclaimed:
     def __init__(self):
         self.url = "https://www.claimittexas.gov/app/claim-search"
-
-        # we store API responses here
         self.captured_payloads = []
 
     def run(self, max_records=50):
@@ -21,163 +17,86 @@ class TexasUnclaimed:
             page = browser.new_page()
 
             # -----------------------------
-            # NETWORK INTERCEPTOR (CRITICAL)
+            # NETWORK CAPTURE (FIXED + PROPERLY INDENTED)
             # -----------------------------
             def handle_response(response):
-    try:
-        request = response.request
-        url = response.url
-        method = request.method
+                try:
+                    request = response.request
+                    url = response.url
+                    method = request.method
 
-        # ONLY skip obvious noise
-        if "image" in url or "font" in url or "css" in url:
-            return
+                    # skip junk assets only
+                    if any(x in url for x in [".png", ".jpg", ".css", ".svg"]):
+                        return
 
-        try:
-            content_type = response.headers.get("content-type", "")
+                    content_type = response.headers.get("content-type", "")
 
-            if "application/json" in content_type:
-                data = response.json()
+                    if "application/json" in content_type:
+                        try:
+                            data = response.json()
 
-                print("\n📡 CAPTURED RESPONSE")
-                print("METHOD:", method)
-                print("URL:", url)
+                            print("\n📡 CAPTURED RESPONSE")
+                            print("METHOD:", method)
+                            print("URL:", url)
 
-                # store EVERYTHING for analysis
-                self.captured_payloads.append({
-                    "url": url,
-                    "method": method,
-                    "data": data
-                })
+                            self.captured_payloads.append({
+                                "url": url,
+                                "method": method,
+                                "data": data
+                            })
 
-        except:
-            pass
+                        except:
+                            pass
 
-    except:
-        pass
+                except Exception as e:
+                    pass
 
             page.on("response", handle_response)
 
             # -----------------------------
             # LOAD PAGE
             # -----------------------------
-            print("📡 Loading Texas ClaimIt page...")
+            print("📡 Loading Texas page...")
             page.goto(self.url, wait_until="networkidle")
 
             page.wait_for_timeout(3000)
 
             # -----------------------------
-            # FIND INPUT
+            # SEARCH INPUT
             # -----------------------------
-            print("🔍 Locating search input...")
-
             inputs = page.query_selector_all("input")
 
             if not inputs:
-                print("❌ No input fields found")
+                print("❌ No input found")
                 browser.close()
                 return []
 
             search = inputs[0]
 
-            # -----------------------------
-            # SEARCH TRIGGER
-            # -----------------------------
-            print("✍️ Entering search: JOHN")
+            print("✍️ Searching JOHN")
             search.fill("john")
 
-            page.wait_for_timeout(1000)
-
-            print("🔍 Submitting search...")
             search.press("Enter")
 
-            # -----------------------------
-            # WAIT FOR NETWORK CALLS
-            # -----------------------------
-            print("⏳ Waiting for API responses...")
+            print("⏳ Waiting for network responses...")
             page.wait_for_timeout(8000)
 
             browser.close()
 
         # -----------------------------
-        # PARSE CAPTURED PAYLOADS
+        # PROCESS RESULTS
         # -----------------------------
         print("\n========================")
         print("PROCESSING CAPTURED DATA")
         print("========================")
 
         for payload in self.captured_payloads:
-            extracted = self.extract_records(payload)
-            results.extend(extracted)
+            if isinstance(payload.get("data"), dict):
+                results.append(payload)
 
-        # -----------------------------
-        # FINAL OUTPUT
-        # -----------------------------
         print("\n========================")
         print("FINAL RESULTS")
         print("========================")
         print("TOTAL RECORDS:", len(results))
 
         return results[:max_records]
-
-    # -----------------------------
-    # EXTRACT RECORDS FROM JSON
-    # -----------------------------
-    def extract_records(self, payload):
-        records = []
-
-        try:
-            # CASE 1: list response
-            if isinstance(payload, list):
-                for item in payload:
-                    rec = self.normalize(item)
-                    if rec:
-                        records.append(rec)
-
-            # CASE 2: dict response
-            elif isinstance(payload, dict):
-
-                # common API patterns
-                possible_keys = ["data", "results", "items", "records", "content"]
-
-                found = False
-
-                for key in possible_keys:
-                    if key in payload and isinstance(payload[key], list):
-                        for item in payload[key]:
-                            rec = self.normalize(item)
-                            if rec:
-                                records.append(rec)
-                        found = True
-                        break
-
-                if not found:
-                    rec = self.normalize(payload)
-                    if rec:
-                        records.append(rec)
-
-        except:
-            pass
-
-        return records
-
-    # -----------------------------
-    # NORMALIZE RECORD STRUCTURE
-    # -----------------------------
-    def normalize(self, item):
-        try:
-            if not isinstance(item, dict):
-                return None
-
-            return {
-                "owner_name": item.get("ownerName") or item.get("name") or item.get("owner"),
-                "address": item.get("address"),
-                "city": item.get("city"),
-                "state": "TX",
-                "county": item.get("county"),
-                "amount": item.get("amount") or item.get("value"),
-                "raw": item
-            }
-
-        except:
-            return None

@@ -1,52 +1,74 @@
-from playwright.sync_api import sync_playwright
-import time
+import re
+import requests
+from bs4 import BeautifulSoup
 
 
 class TexasUnclaimed:
     def __init__(self):
-        self.url = "https://www.claimittexas.gov/app/claim-search"
+        self.base_url = "https://www.claimittexas.gov/app/claim-search"
+        self.js_links = []
+        self.endpoints = set()
+
+    def fetch_html(self):
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        r = requests.get(self.base_url, headers=headers, timeout=30)
+        return r.text
+
+    def extract_js_files(self, html):
+        soup = BeautifulSoup(html, "html.parser")
+
+        for script in soup.find_all("script"):
+            src = script.get("src")
+            if src and ".js" in src:
+                if src.startswith("/"):
+                    src = "https://www.claimittexas.gov" + src
+                self.js_links.append(src)
+
+    def download_js(self, url):
+        try:
+            r = requests.get(url, timeout=30)
+            return r.text
+        except Exception:
+            return ""
+
+    def scan_for_endpoints(self, js_text):
+        patterns = [
+            r"https://[a-zA-Z0-9./?=_-]+",
+            r"/SWS/[a-zA-Z0-9/_-]+",
+            r"/api/[a-zA-Z0-9/_-]+",
+            r"graphql",
+            r"fetch\\(\\s*['\"](.*?)['\"]",
+            r"axios\\.[getpostPUTdelete]+\\(['\"](.*?)['\"]"
+        ]
+
+        for pattern in patterns:
+            matches = re.findall(pattern, js_text, re.IGNORECASE)
+            for m in matches:
+                if isinstance(m, tuple):
+                    m = m[0]
+                self.endpoints.add(m)
 
     def run(self, max_records=50):
-        results = []
+        print("🚀 STARTING JS BUNDLE RECON")
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+        html = self.fetch_html()
+        self.extract_js_files(html)
 
-            # capture API calls
-            def log_response(response):
-                if any(x in response.url.lower() for x in ["api", "search", "claim", "graphql"]):
-                    print("HIT API:", response.url)
+        print(f"JS FILES FOUND: {len(self.js_links)}")
 
-            page.on("response", log_response)
+        for js in self.js_links:
+            print(f"SCANNING: {js}")
+            content = self.download_js(js)
+            self.scan_for_endpoints(content)
 
-            page.goto(self.url, wait_until="networkidle")
+        print("\n========================")
+        print("DISCOVERED ENDPOINTS")
+        print("========================")
 
-            # wait for JS app to load fully
-            page.wait_for_timeout(5000)
+        for e in sorted(self.endpoints):
+            print(e)
 
-            # TRY TO FIND SEARCH INPUT
-            inputs = page.query_selector_all("input")
-
-            print(f"FOUND INPUTS: {len(inputs)}")
-
-            if len(inputs) == 0:
-                print("NO SEARCH INPUT FOUND")
-                browser.close()
-                return []
-
-            search_box = inputs[0]
-
-            # simulate real user search
-            search_box.fill("John")
-            search_box.press("Enter")
-
-            print("SEARCH TRIGGERED")
-
-            # wait for results request
-            page.wait_for_timeout(8000)
-
-            browser.close()
-
-        print("DONE REAL SEARCH RUN")
-        return results
+        print("\nDONE RECON")
+        return list(self.endpoints)

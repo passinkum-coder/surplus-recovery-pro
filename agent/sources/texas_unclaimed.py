@@ -1,4 +1,5 @@
 from playwright.sync_api import sync_playwright
+import json
 
 
 class TexasUnclaimed:
@@ -12,33 +13,49 @@ class TexasUnclaimed:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            print("Fetching Texas page...")
+            print("Loading Texas site...")
+
+            captured_payloads = []
+
+            # INTERCEPT NETWORK RESPONSES
+            def handle_response(response):
+                try:
+                    if "application/json" in response.headers.get("content-type", ""):
+                        data = response.json()
+                        captured_payloads.append(data)
+                except:
+                    pass
+
+            page.on("response", handle_response)
 
             page.goto(self.url, wait_until="networkidle")
-            page.wait_for_timeout(5000)
+            page.wait_for_timeout(8000)
 
-            # Try to trigger any lazy-loaded data
-            try:
-                page.keyboard.type("a")
-                page.wait_for_timeout(3000)
-            except:
-                pass
+            browser.close()
 
-            page.wait_for_timeout(5000)
+        # EXTRACT ANY STRUCTURED DATA FOUND
+        for payload in captured_payloads:
+            if isinstance(payload, list):
+                for item in payload:
+                    if len(results) >= max_records:
+                        break
 
-            # ⚠️ DOM extraction fallback (safe baseline)
-            rows = page.query_selector_all("table tr")
-
-            for row in rows[:max_records]:
-                cols = row.query_selector_all("td")
-                if len(cols) >= 2:
                     results.append({
-                        "name": cols[0].inner_text().strip(),
-                        "value": cols[1].inner_text().strip(),
+                        "raw": item,
                         "state": "Texas"
                     })
 
-            browser.close()
+            elif isinstance(payload, dict):
+                for k, v in payload.items():
+                    if isinstance(v, list):
+                        for item in v:
+                            if len(results) >= max_records:
+                                break
+
+                            results.append({
+                                "raw": item,
+                                "state": "Texas"
+                            })
 
         print(f"Texas total records: {len(results)}")
         return results

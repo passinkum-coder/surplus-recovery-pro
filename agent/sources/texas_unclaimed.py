@@ -1,99 +1,76 @@
-from playwright.sync_api import sync_playwright
-import json
-import time
+import re
+import requests
 
 
 class TexasUnclaimed:
     def __init__(self):
-        self.url = "https://www.claimittexas.gov/app/claim-search"
-        self.captured_requests = []
+        self.base_url = "https://www.claimittexas.gov/"
+
+        # Known JS bundles (can be expanded later automatically)
+        self.js_files = [
+            "main.aaf8085b48ee1eb5.js",
+            "runtime.*.js",
+            "polyfills.*.js"
+        ]
 
     def run(self, max_records=50):
-        print("🚀 STARTING NETWORK CAPTURE PIPELINE")
+        print("\n🚀 STARTING TEXAS JS BUNDLE EXTRACTION")
+        print("=" * 50)
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+        all_records = []
 
-            # -----------------------------
-            # CAPTURE ALL NETWORK REQUESTS
-            # -----------------------------
-            def handle_request(request):
-                if any(x in request.url.lower() for x in ["search", "claim", "sws", "api", "graphql"]):
-                    self.captured_requests.append({
-                        "url": request.url,
-                        "method": request.method,
-                        "post_data": request.post_data,
-                        "headers": request.headers
-                    })
-                    print("📡 REQUEST CAPTURED:", request.method, request.url)
+        # STEP 1: fetch homepage to discover real bundle names
+        print("📡 Fetching homepage...")
+        r = requests.get(self.base_url, timeout=30)
+        html = r.text
 
-            def handle_response(response):
-                if any(x in response.url.lower() for x in ["search", "claim", "sws", "api", "graphql"]):
-                    try:
-                        print("📥 RESPONSE:", response.status, response.url)
-                    except Exception:
-                        pass
+        # extract real JS files dynamically
+        js_matches = re.findall(r'src="([^"]+\.js)"', html)
+        js_files = list(set(js_matches))
 
-            page.on("request", handle_request)
-            page.on("response", handle_response)
+        print(f"JS FILES FOUND: {len(js_files)}")
 
-            # -----------------------------
-            # LOAD PAGE
-            # -----------------------------
-            page.goto(self.url, wait_until="networkidle")
-            page.wait_for_timeout(3000)
-
-            # -----------------------------
-            # TRY TO TRIGGER SEARCH
-            # -----------------------------
-            inputs = page.query_selector_all("input")
-
-            print(f"INPUT FIELDS FOUND: {len(inputs)}")
-
-            if len(inputs) == 0:
-                print("❌ NO INPUT FIELDS FOUND")
-                browser.close()
-                return []
-
-            # Use first input as search field
-            search_box = inputs[0]
-
-            print("✍️ ENTERING TEST QUERY...")
-            search_box.fill("John")
-
-            page.wait_for_timeout(1000)
-
-            print("🔍 TRIGGERING SEARCH (ENTER)")
-            search_box.press("Enter")
-
-            # wait for network calls
-            page.wait_for_timeout(8000)
-
-            # -----------------------------
-            # OUTPUT RESULTS
-            # -----------------------------
-            print("\n============================")
-            print("CAPTURED REQUESTS")
-            print("============================")
-
-            if not self.captured_requests:
-                print("NO REQUESTS CAPTURED")
-                print("\n⚠️ IMPORTANT: This means:")
-                print("- Either no backend request is triggered")
-                print("- OR results are rendered locally in JS (no API)")
+        # STEP 2: scan each JS file
+        for js in js_files:
+            if not js.startswith("http"):
+                url = self.base_url.rstrip("/") + "/" + js
             else:
-                for req in self.captured_requests:
-                    print("\n----------------------------")
-                    print("URL:", req["url"])
-                    print("METHOD:", req["method"])
-                    print("POST DATA:", req["post_data"])
+                url = js
 
-            # save for later pipeline step
-            with open("texas_requests.json", "w") as f:
-                json.dump(self.captured_requests, f, indent=2)
+            print(f"\n🔍 SCANNING: {js}")
 
-            browser.close()
+            try:
+                res = requests.get(url, timeout=30)
+                text = res.text
 
-            print("\n🚀 PIPELINE COMPLETE")
-            return self.captured_requests
+                # STEP 3: extract JSON-like objects
+                objects = re.findall(r'\{[^{}]{30,}\}', text)
+
+                print(f"OBJECTS FOUND: {len(objects)}")
+
+                for obj in objects:
+                    if any(k in obj.lower() for k in [
+                        "name", "owner", "amount", "address", "claim"
+                    ]):
+                        all_records.append(obj)
+
+                        if len(all_records) >= max_records:
+                            print("\n⚠️ MAX RECORDS REACHED")
+                            return all_records
+
+            except Exception as e:
+                print(f"❌ ERROR FETCHING {js}: {e}")
+
+        print("\n========================")
+        print("FINAL RESULTS")
+        print("========================")
+        print("TOTAL RECORDS:", len(all_records))
+
+        if len(all_records) == 0:
+            print("\n⚠️ NO DATA FOUND")
+            print("This confirms data is likely:")
+            print("- runtime hydrated (Angular state)")
+            print("- or encrypted after load")
+            print("- or requires session auth")
+
+        return all_records

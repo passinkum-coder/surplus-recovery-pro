@@ -1,83 +1,128 @@
-import re
 import json
-import requests
+from playwright.sync_api import sync_playwright
 
 
 class TexasUnclaimed:
     def __init__(self):
-        self.base_url = "https://www.claimittexas.gov/"
-        self.max_records = 50
+        self.url = "https://www.claimittexas.gov/app/claim-search"
 
     def run(self, max_records=50):
-        print("\n🚀 STARTING TEXAS JS BUNDLE EXTRACTION")
-        print("=" * 50)
+        print("\n🚀 STARTING RUNTIME STATE EXTRACTION (PLAYWRIGHT)")
+        print("=" * 60)
 
-        self.max_records = max_records
-        records = []
+        results = []
 
-        # STEP 1: FETCH HOMEPAGE
-        print("📡 Fetching homepage...")
-        r = requests.get(self.base_url, timeout=30)
-        html = r.text
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
 
-        # STEP 2: DISCOVER JS FILES
-        js_files = re.findall(r'src="([^"]+\.js)"', html)
-        js_files = list(set(js_files))
+            # -----------------------------
+            # CAPTURE XHR / FETCH RESPONSES
+            # -----------------------------
+            def handle_response(response):
+                try:
+                    url = response.url.lower()
 
-        print(f"JS FILES FOUND: {len(js_files)}")
+                    if any(k in url for k in ["search", "claim", "api", "graphql", "sws"]):
+                        print("📡 API RESPONSE:", response.status, response.url)
 
-        # STEP 3: SCAN ALL JS FILES
-        for js in js_files:
-            url = js if js.startswith("http") else self.base_url.rstrip("/") + "/" + js
+                        try:
+                            data = response.json()
 
-            print(f"\n🔍 SCANNING: {js}")
+                            extracted = self.extract(data)
+                            if extracted:
+                                results.extend(extracted)
 
-            try:
-                res = requests.get(url, timeout=30)
-                text = res.text
+                        except:
+                            pass
 
-                # STEP 4: EXTRACT JS OBJECT CANDIDATES
-                candidates = re.findall(r'\{[^{}]{30,}\}', text)
+                except:
+                    pass
 
-                print(f"OBJECTS FOUND: {len(candidates)}")
+            page.on("response", handle_response)
 
-                for c in candidates:
-                    parsed = self.normalize(c)
-                    if parsed:
-                        records.append(parsed)
+            # -----------------------------
+            # LOAD PAGE
+            # -----------------------------
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_timeout(4000)
 
-                    if len(records) >= self.max_records:
-                        print("\n⚠️ MAX RECORDS REACHED")
-                        return records
+            # -----------------------------
+            # FIND INPUT FIELD
+            # -----------------------------
+            inputs = page.query_selector_all("input")
 
-            except Exception as e:
-                print(f"❌ ERROR: {e}")
+            if not inputs:
+                print("❌ NO INPUT FIELDS FOUND")
+                browser.close()
+                return []
 
+            search = inputs[0]
+
+            print("✍️ ENTERING SEARCH TERM: JOHN")
+            search.fill("john")
+
+            page.wait_for_timeout(1000)
+
+            print("🔍 TRIGGERING SEARCH")
+            search.press("Enter")
+
+            # allow network + rendering
+            page.wait_for_timeout(8000)
+
+            browser.close()
+
+        # -----------------------------
+        # FINAL OUTPUT
+        # -----------------------------
         print("\n========================")
         print("FINAL RESULTS")
         print("========================")
-        print("TOTAL RECORDS:", len(records))
+        print("TOTAL RECORDS:", len(results))
+
+        return results[:max_records]
+
+    # -----------------------------
+    # EXTRACT STRUCTURED RECORDS
+    # -----------------------------
+    def extract(self, data):
+        records = []
+
+        try:
+            # Case 1: list of results
+            if isinstance(data, list):
+                for item in data:
+                    parsed = self.normalize(item)
+                    if parsed:
+                        records.append(parsed)
+
+            # Case 2: dict with embedded results
+            elif isinstance(data, dict):
+                for key in ["results", "data", "items", "claims"]:
+                    if key in data and isinstance(data[key], list):
+                        for item in data[key]:
+                            parsed = self.normalize(item)
+                            if parsed:
+                                records.append(parsed)
+
+        except:
+            pass
 
         return records
 
     # -----------------------------
-    # NORMALIZER (CLEAN DATA ONLY)
+    # NORMALIZE RECORD
     # -----------------------------
-    def normalize(self, raw):
+    def normalize(self, item):
         try:
-            cleaned = raw.replace("'", '"')
-
-            data = json.loads(cleaned)
-
-            # only keep meaningful records
-            if not any(k in data for k in ["name", "owner", "amount", "address"]):
+            if not isinstance(item, dict):
                 return None
 
             return {
-                "owner_name": data.get("name") or data.get("owner"),
-                "address": data.get("address"),
-                "amount": data.get("amount"),
-                "county": data.get("county"),
+                "owner_name": item.get("name") or item.get("owner"),
+                "address": item.get("address"),
+                "amount": item.get("amount"),
+                "county": item.get("county"),
                 "state": "TX"
             }
 

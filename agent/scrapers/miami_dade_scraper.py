@@ -18,7 +18,7 @@ class MiamiDadeScraper(BaseScraper):
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            # Capture ALL JSON responses
+            # Capture JSON responses
             def handle_response(response):
                 try:
                     if "application/json" in response.headers.get("content-type", ""):
@@ -29,27 +29,37 @@ class MiamiDadeScraper(BaseScraper):
             page.on("response", handle_response)
 
             page.goto(self.url, wait_until="networkidle")
-
-            # 🔥 STEP 1: WAIT FOR PAGE LOAD
             page.wait_for_timeout(3000)
 
-            # 🔥 STEP 2: TRY TO TRIGGER SEARCH AUTOMATICALLY
+            # 🔥 STEP 1: FIND INPUT FIELD AND TYPE SEARCH VALUE
             try:
-                # Try pressing Enter (common trigger)
-                page.keyboard.press("Enter")
-                page.wait_for_timeout(5000)
+                inputs = page.query_selector_all("input")
+
+                for inp in inputs:
+                    try:
+                        name = (inp.get_attribute("name") or "").lower()
+                        placeholder = (inp.get_attribute("placeholder") or "").lower()
+
+                        if "name" in name or "search" in name or "name" in placeholder:
+                            inp.fill("a")  # 🔥 KEY STEP: FORCE RESULTS
+                            break
+                    except:
+                        continue
             except:
                 pass
 
-            # 🔥 STEP 3: TRY CLICKING BUTTONS
+            page.wait_for_timeout(2000)
+
+            # 🔥 STEP 2: CLICK SEARCH BUTTON
             try:
                 buttons = page.query_selector_all("button")
+
                 for btn in buttons:
                     try:
                         text = btn.inner_text().lower()
                         if "search" in text or "submit" in text:
                             btn.click()
-                            page.wait_for_timeout(5000)
+                            page.wait_for_timeout(6000)
                             break
                     except:
                         continue
@@ -58,7 +68,7 @@ class MiamiDadeScraper(BaseScraper):
 
             browser.close()
 
-        # 🔥 STEP 4: EXTRACT FROM CAPTURED DATA
+        # 🔥 STEP 3: EXTRACT DATA
         for item in captured:
             if isinstance(item, list):
                 for r in item:

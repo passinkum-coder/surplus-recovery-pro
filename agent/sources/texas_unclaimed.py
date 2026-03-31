@@ -1,63 +1,79 @@
-import requests
+from playwright.sync_api import sync_playwright
 
 
 class TexasUnclaimed:
     def __init__(self):
-        self.base_url = "https://claimittexas.gov/app/claim-search"
-        self.api_url = "https://claimittexas.gov/api/claim-search"
-        self.headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json, text/plain, */*",
-            "Content-Type": "application/json"
-        }
+        self.url = "https://claimittexas.gov/app/claim-search"
 
-    def fetch_page(self, page=1, query="A"):
-        payload = {
-            "lastName": query,
-            "page": page,
-            "pageSize": 50
-        }
+    def run(self, max_records=50):
+        results = []
 
-        try:
-            response = requests.post(
-                self.api_url,
-                json=payload,
-                headers=self.headers,
-                timeout=30
-            )
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
 
-            if response.status_code != 200:
-                return []
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_timeout(3000)
 
-            data = response.json()
+            # 🔥 STEP 1: FIND SEARCH INPUT AND TYPE
+            try:
+                inputs = page.query_selector_all("input")
 
-            return data.get("results", [])
+                for inp in inputs:
+                    try:
+                        placeholder = (inp.get_attribute("placeholder") or "").lower()
+                        name = (inp.get_attribute("name") or "").lower()
 
-        except Exception:
-            return []
+                        if "name" in placeholder or "name" in name:
+                            inp.fill("a")  # force results
+                            break
+                    except:
+                        continue
+            except:
+                pass
 
-    def run(self, max_pages=5):
-        all_results = []
+            page.wait_for_timeout(2000)
 
-        for page in range(1, max_pages + 1):
-            print(f"Fetching Texas page {page}")
+            # 🔥 STEP 2: CLICK SEARCH BUTTON
+            try:
+                buttons = page.query_selector_all("button")
 
-            results = self.fetch_page(page=page)
+                for btn in buttons:
+                    try:
+                        text = btn.inner_text().lower()
+                        if "search" in text:
+                            btn.click()
+                            page.wait_for_timeout(6000)
+                            break
+                    except:
+                        continue
+            except:
+                pass
 
-            if not results:
-                break
+            # 🔥 STEP 3: SCRAPE RESULTS TABLE
+            rows = page.query_selector_all("table tr")
 
-            for item in results:
-                all_results.append({
-                    "state": "TX",
-                    "county": None,
-                    "owner": item.get("ownerName"),
-                    "amount": item.get("amount"),
-                    "city": item.get("city"),
-                    "source": "Texas Unclaimed",
-                    "status": "new"
-                })
+            for row in rows[:max_records]:
+                try:
+                    cols = row.query_selector_all("td")
 
-        print(f"Texas total records: {len(all_results)}")
+                    if len(cols) < 2:
+                        continue
 
-        return all_results
+                    results.append({
+                        "state": "TX",
+                        "county": None,
+                        "owner": cols[0].inner_text().strip(),
+                        "amount": cols[1].inner_text().strip() if len(cols) > 1 else None,
+                        "city": cols[2].inner_text().strip() if len(cols) > 2 else None,
+                        "source": "Texas Unclaimed",
+                        "status": "new"
+                    })
+                except:
+                    continue
+
+            browser.close()
+
+        print(f"Texas total records: {len(results)}")
+
+        return results

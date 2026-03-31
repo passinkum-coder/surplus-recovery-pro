@@ -1,109 +1,99 @@
-import re
-import requests
-from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
+import json
+import time
 
 
 class TexasUnclaimed:
     def __init__(self):
-        self.base_url = "https://www.claimittexas.gov/app/claim-search"
-        self.js_links = []
-        self.endpoints = set()
+        self.url = "https://www.claimittexas.gov/app/claim-search"
+        self.captured_requests = []
 
-    # -----------------------------
-    # FETCH HTML
-    # -----------------------------
-    def fetch_html(self):
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        try:
-            r = requests.get(self.base_url, headers=headers, timeout=30)
-            return r.text or ""
-        except Exception:
-            return ""
-
-    # -----------------------------
-    # EXTRACT JS FILES
-    # -----------------------------
-    def extract_js_files(self, html):
-        if not isinstance(html, str):
-            return
-
-        soup = BeautifulSoup(html, "html.parser")
-
-        for script in soup.find_all("script"):
-            src = script.get("src")
-            if src and ".js" in src:
-                if src.startswith("/"):
-                    src = "https://www.claimittexas.gov" + src
-                self.js_links.append(src)
-
-    # -----------------------------
-    # PATCH 1: SAFE JS DOWNLOAD
-    # -----------------------------
-    def download_js(self, url):
-        try:
-            r = requests.get(url, timeout=30)
-            if r.status_code == 200:
-                return r.text or ""
-            return ""
-        except Exception:
-            return ""
-
-    # -----------------------------
-    # PATCH 2: SAFE SCAN FUNCTION
-    # -----------------------------
-    def scan_for_endpoints(self, js_text):
-        if not isinstance(js_text, str):
-            return
-
-        patterns = [
-            r"https://[a-zA-Z0-9./?=_\-]+",
-            r"/SWS/[a-zA-Z0-9/_\-]+",
-            r"/api/[a-zA-Z0-9/_\-]+",
-            r"graphql",
-            r"fetch\\(\\s*['\"](.*?)['\"]",
-            r"axios\\.[a-zA-Z]+\\(['\"](.*?)['\"]"
-        ]
-
-        for pattern in patterns:
-            try:
-                matches = re.findall(pattern, js_text, re.IGNORECASE)
-
-                for m in matches:
-                    if isinstance(m, tuple):
-                        m = m[0]
-                    if isinstance(m, str) and len(m) > 3:
-                        self.endpoints.add(m)
-
-            except Exception:
-                continue
-
-    # -----------------------------
-    # MAIN RUN
-    # -----------------------------
     def run(self, max_records=50):
-        print("🚀 STARTING JS BUNDLE RECON")
+        print("🚀 STARTING NETWORK CAPTURE PIPELINE")
 
-        html = self.fetch_html()
-        self.extract_js_files(html)
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
 
-        print(f"JS FILES FOUND: {len(self.js_links)}")
+            # -----------------------------
+            # CAPTURE ALL NETWORK REQUESTS
+            # -----------------------------
+            def handle_request(request):
+                if any(x in request.url.lower() for x in ["search", "claim", "sws", "api", "graphql"]):
+                    self.captured_requests.append({
+                        "url": request.url,
+                        "method": request.method,
+                        "post_data": request.post_data,
+                        "headers": request.headers
+                    })
+                    print("📡 REQUEST CAPTURED:", request.method, request.url)
 
-        for js in self.js_links:
-            print(f"SCANNING: {js}")
-            content = self.download_js(js)
-            self.scan_for_endpoints(content)
+            def handle_response(response):
+                if any(x in response.url.lower() for x in ["search", "claim", "sws", "api", "graphql"]):
+                    try:
+                        print("📥 RESPONSE:", response.status, response.url)
+                    except Exception:
+                        pass
 
-        print("\n========================")
-        print("DISCOVERED ENDPOINTS")
-        print("========================")
+            page.on("request", handle_request)
+            page.on("response", handle_response)
 
-        if not self.endpoints:
-            print("NO ENDPOINTS FOUND (IMPORTANT SIGNAL)")
-        else:
-            for e in sorted(self.endpoints):
-                print(e)
+            # -----------------------------
+            # LOAD PAGE
+            # -----------------------------
+            page.goto(self.url, wait_until="networkidle")
+            page.wait_for_timeout(3000)
 
-        print("\nDONE RECON")
-        return list(self.endpoints)
+            # -----------------------------
+            # TRY TO TRIGGER SEARCH
+            # -----------------------------
+            inputs = page.query_selector_all("input")
+
+            print(f"INPUT FIELDS FOUND: {len(inputs)}")
+
+            if len(inputs) == 0:
+                print("❌ NO INPUT FIELDS FOUND")
+                browser.close()
+                return []
+
+            # Use first input as search field
+            search_box = inputs[0]
+
+            print("✍️ ENTERING TEST QUERY...")
+            search_box.fill("John")
+
+            page.wait_for_timeout(1000)
+
+            print("🔍 TRIGGERING SEARCH (ENTER)")
+            search_box.press("Enter")
+
+            # wait for network calls
+            page.wait_for_timeout(8000)
+
+            # -----------------------------
+            # OUTPUT RESULTS
+            # -----------------------------
+            print("\n============================")
+            print("CAPTURED REQUESTS")
+            print("============================")
+
+            if not self.captured_requests:
+                print("NO REQUESTS CAPTURED")
+                print("\n⚠️ IMPORTANT: This means:")
+                print("- Either no backend request is triggered")
+                print("- OR results are rendered locally in JS (no API)")
+            else:
+                for req in self.captured_requests:
+                    print("\n----------------------------")
+                    print("URL:", req["url"])
+                    print("METHOD:", req["method"])
+                    print("POST DATA:", req["post_data"])
+
+            # save for later pipeline step
+            with open("texas_requests.json", "w") as f:
+                json.dump(self.captured_requests, f, indent=2)
+
+            browser.close()
+
+            print("\n🚀 PIPELINE COMPLETE")
+            return self.captured_requests

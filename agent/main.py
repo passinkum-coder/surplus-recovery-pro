@@ -1,41 +1,65 @@
+import os
+
+# --- EXISTING SCRAPER IMPORT ---
 from scrapers.county_scrapers import load_scrapers
 
+# --- NEW STATE DATA SOURCE ---
+from sources.texas_unclaimed import TexasUnclaimed
 
-def main():
-    # Load scrapers FIRST
+
+def run_county_scrapers():
+    print("========================================")
+    print("RUNNING COUNTY SCRAPERS")
+    print("========================================")
+
     scrapers = load_scrapers()
 
     print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
 
-    # Loop through scrapers
     for scraper in scrapers:
+        print("\n============================")
+        print(f"Running: {scraper.county_name}")
+
         try:
-            print(f"============================")
-            print(f"Running: {scraper.county_name}")
-
-            # Flexible execution method support
-            records = []
-
-            if hasattr(scraper, "run"):
-                records = scraper.run()
-            elif hasattr(scraper, "scrape"):
-                records = scraper.scrape()
-            elif hasattr(scraper, "fetch"):
-                records = scraper.fetch()
-            elif hasattr(scraper, "get_data"):
-                records = scraper.get_data()
-            else:
-                raise Exception(f"No valid method for {scraper.county_name}")
-
-            if records is None:
-                records = []
+            data = scraper.scrape()
 
             print(f"COUNTY: {scraper.county_name}")
-            print(f"RECORDS FOUND: {len(records)}")
-            print(f"Upserting: {len(records)}")
+            print(f"RECORDS FOUND: {len(data)}")
+
+            if data:
+                print(f"Upserting: {len(data)}")
+                # 👉 plug your Supabase insert here later
 
         except Exception as e:
             print(f"ERROR in {scraper.county_name}: {e}")
+
+
+def run_texas_pipeline():
+    print("\n========================================")
+    print("RUNNING STATE PIPELINE: TEXAS")
+    print("========================================")
+
+    tx = TexasUnclaimed()
+
+    data = tx.run(max_pages=3)
+
+    print(f"\nTEXAS RECORDS FOUND: {len(data)}")
+
+    if data:
+        print(f"Upserting: {len(data)}")
+        # 👉 plug your Supabase insert here later
+
+
+def main():
+    print("\n🚀 STARTING DATA PIPELINE\n")
+
+    # --- RUN OLD SYSTEM (safe to keep) ---
+    run_county_scrapers()
+
+    # --- RUN NEW SYSTEM (REAL DATA) ---
+    run_texas_pipeline()
+
+    print("\n✅ PIPELINE COMPLETE\n")
 
 
 if __name__ == "__main__":

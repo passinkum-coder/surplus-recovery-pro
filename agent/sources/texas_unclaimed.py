@@ -1,13 +1,17 @@
-import json
 from playwright.sync_api import sync_playwright
+import json
+import re
 
 
 class TexasUnclaimed:
     def __init__(self):
         self.url = "https://www.claimittexas.gov/app/claim-search"
 
+        # we store API responses here
+        self.captured_payloads = []
+
     def run(self, max_records=50):
-        print("\n🚀 STARTING RUNTIME STATE EXTRACTION (PLAYWRIGHT)")
+        print("\n🚀 STARTING TEXAS NETWORK CAPTURE PIPELINE")
         print("=" * 60)
 
         results = []
@@ -17,21 +21,24 @@ class TexasUnclaimed:
             page = browser.new_page()
 
             # -----------------------------
-            # CAPTURE XHR / FETCH RESPONSES
+            # NETWORK INTERCEPTOR (CRITICAL)
             # -----------------------------
             def handle_response(response):
                 try:
-                    url = response.url.lower()
+                    url = response.url
 
-                    if any(k in url for k in ["search", "claim", "api", "graphql", "sws"]):
-                        print("📡 API RESPONSE:", response.status, response.url)
-
+                    # Capture only likely API/XHR calls
+                    if any(x in url.lower() for x in ["api", "search", "claim", "unclaimed", "results"]):
                         try:
-                            data = response.json()
+                            content_type = response.headers.get("content-type", "")
 
-                            extracted = self.extract(data)
-                            if extracted:
-                                results.extend(extracted)
+                            if "application/json" in content_type:
+                                data = response.json()
+
+                                print(f"\n📡 CAPTURED API RESPONSE:")
+                                print(f"URL: {url}")
+
+                                self.captured_payloads.append(data)
 
                         except:
                             pass
@@ -44,33 +51,54 @@ class TexasUnclaimed:
             # -----------------------------
             # LOAD PAGE
             # -----------------------------
+            print("📡 Loading Texas ClaimIt page...")
             page.goto(self.url, wait_until="networkidle")
-            page.wait_for_timeout(4000)
+
+            page.wait_for_timeout(3000)
 
             # -----------------------------
-            # FIND INPUT FIELD
+            # FIND INPUT
             # -----------------------------
+            print("🔍 Locating search input...")
+
             inputs = page.query_selector_all("input")
 
             if not inputs:
-                print("❌ NO INPUT FIELDS FOUND")
+                print("❌ No input fields found")
                 browser.close()
                 return []
 
             search = inputs[0]
 
-            print("✍️ ENTERING SEARCH TERM: JOHN")
+            # -----------------------------
+            # SEARCH TRIGGER
+            # -----------------------------
+            print("✍️ Entering search: JOHN")
             search.fill("john")
 
             page.wait_for_timeout(1000)
 
-            print("🔍 TRIGGERING SEARCH")
+            print("🔍 Submitting search...")
             search.press("Enter")
 
-            # allow network + rendering
+            # -----------------------------
+            # WAIT FOR NETWORK CALLS
+            # -----------------------------
+            print("⏳ Waiting for API responses...")
             page.wait_for_timeout(8000)
 
             browser.close()
+
+        # -----------------------------
+        # PARSE CAPTURED PAYLOADS
+        # -----------------------------
+        print("\n========================")
+        print("PROCESSING CAPTURED DATA")
+        print("========================")
+
+        for payload in self.captured_payloads:
+            extracted = self.extract_records(payload)
+            results.extend(extracted)
 
         # -----------------------------
         # FINAL OUTPUT
@@ -83,27 +111,40 @@ class TexasUnclaimed:
         return results[:max_records]
 
     # -----------------------------
-    # EXTRACT STRUCTURED RECORDS
+    # EXTRACT RECORDS FROM JSON
     # -----------------------------
-    def extract(self, data):
+    def extract_records(self, payload):
         records = []
 
         try:
-            # Case 1: list of results
-            if isinstance(data, list):
-                for item in data:
-                    parsed = self.normalize(item)
-                    if parsed:
-                        records.append(parsed)
+            # CASE 1: list response
+            if isinstance(payload, list):
+                for item in payload:
+                    rec = self.normalize(item)
+                    if rec:
+                        records.append(rec)
 
-            # Case 2: dict with embedded results
-            elif isinstance(data, dict):
-                for key in ["results", "data", "items", "claims"]:
-                    if key in data and isinstance(data[key], list):
-                        for item in data[key]:
-                            parsed = self.normalize(item)
-                            if parsed:
-                                records.append(parsed)
+            # CASE 2: dict response
+            elif isinstance(payload, dict):
+
+                # common API patterns
+                possible_keys = ["data", "results", "items", "records", "content"]
+
+                found = False
+
+                for key in possible_keys:
+                    if key in payload and isinstance(payload[key], list):
+                        for item in payload[key]:
+                            rec = self.normalize(item)
+                            if rec:
+                                records.append(rec)
+                        found = True
+                        break
+
+                if not found:
+                    rec = self.normalize(payload)
+                    if rec:
+                        records.append(rec)
 
         except:
             pass
@@ -111,7 +152,7 @@ class TexasUnclaimed:
         return records
 
     # -----------------------------
-    # NORMALIZE RECORD
+    # NORMALIZE RECORD STRUCTURE
     # -----------------------------
     def normalize(self, item):
         try:
@@ -119,11 +160,13 @@ class TexasUnclaimed:
                 return None
 
             return {
-                "owner_name": item.get("name") or item.get("owner"),
+                "owner_name": item.get("ownerName") or item.get("name") or item.get("owner"),
                 "address": item.get("address"),
-                "amount": item.get("amount"),
+                "city": item.get("city"),
+                "state": "TX",
                 "county": item.get("county"),
-                "state": "TX"
+                "amount": item.get("amount") or item.get("value"),
+                "raw": item
             }
 
         except:

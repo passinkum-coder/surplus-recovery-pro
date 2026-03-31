@@ -5,38 +5,40 @@ class TexasUnclaimed:
     def __init__(self):
         self.url = "https://claimittexas.gov/app/claim-search"
 
-    def run(self, max_requests=5):
-        captured = []
+    def run(self, max_records=50):
+        results = []
 
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             page = browser.new_page()
 
-            # 🔥 CAPTURE ALL API CALLS
-            def log_response(response):
-                try:
-                    if "api" in response.url or "search" in response.url:
-                        print("API:", response.url)
-                        print("STATUS:", response.status)
-                except:
-                    pass
-
-            page.on("response", log_response)
+            print("Fetching Texas page...")
 
             page.goto(self.url, wait_until="networkidle")
             page.wait_for_timeout(5000)
 
-            # 🔥 FORCE ANY USER ACTION
+            # Try to trigger any lazy-loaded data
             try:
                 page.keyboard.type("a")
                 page.wait_for_timeout(3000)
             except:
                 pass
 
-            # 🔥 LET PAGE FIRE XHR CALLS
-            page.wait_for_timeout(8000)
+            page.wait_for_timeout(5000)
+
+            # ⚠️ DOM extraction fallback (safe baseline)
+            rows = page.query_selector_all("table tr")
+
+            for row in rows[:max_records]:
+                cols = row.query_selector_all("td")
+                if len(cols) >= 2:
+                    results.append({
+                        "name": cols[0].inner_text().strip(),
+                        "value": cols[1].inner_text().strip(),
+                        "state": "Texas"
+                    })
 
             browser.close()
 
-        print("DEBUG COMPLETE — check API logs above")
-        return captured
+        print(f"Texas total records: {len(results)}")
+        return results

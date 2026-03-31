@@ -24,27 +24,37 @@ class TexasUnclaimed:
             # NETWORK INTERCEPTOR (CRITICAL)
             # -----------------------------
             def handle_response(response):
-                try:
-                    url = response.url
+    try:
+        request = response.request
+        url = response.url
+        method = request.method
 
-                    # Capture only likely API/XHR calls
-                    if any(x in url.lower() for x in ["api", "search", "claim", "unclaimed", "results"]):
-                        try:
-                            content_type = response.headers.get("content-type", "")
+        # ONLY skip obvious noise
+        if "image" in url or "font" in url or "css" in url:
+            return
 
-                            if "application/json" in content_type:
-                                data = response.json()
+        try:
+            content_type = response.headers.get("content-type", "")
 
-                                print(f"\n📡 CAPTURED API RESPONSE:")
-                                print(f"URL: {url}")
+            if "application/json" in content_type:
+                data = response.json()
 
-                                self.captured_payloads.append(data)
+                print("\n📡 CAPTURED RESPONSE")
+                print("METHOD:", method)
+                print("URL:", url)
 
-                        except:
-                            pass
+                # store EVERYTHING for analysis
+                self.captured_payloads.append({
+                    "url": url,
+                    "method": method,
+                    "data": data
+                })
 
-                except:
-                    pass
+        except:
+            pass
+
+    except:
+        pass
 
             page.on("response", handle_response)
 

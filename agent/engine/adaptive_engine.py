@@ -70,9 +70,16 @@ class AdaptiveScraperEngine:
     # -------------------------
     # TEXAS SCRAPER (YOU ALREADY HAVE REAL LOGIC)
     # -------------------------
-    def _run_texas(self, counties, query, config):
-        print("Running Texas logic...")
-        return []
+    from sources.texas_unclaimed import TexasUnclaimed
+
+def _run_texas(self, counties, query, config):
+    print("🇺🇸 Running REAL Texas scraper via adaptive engine")
+
+    tx = TexasUnclaimed()
+
+    data = tx.run(max_records=50)
+
+    return data
 
     # -------------------------
     # GENERIC DOM SCRAPER (USED FOR FLORIDA ETC)

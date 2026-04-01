@@ -1,33 +1,45 @@
-from agent.sources.base_schema import BaseSchema
+from agent.sources.base_dom_scraper import BaseDOMScraper
+from agent.sources.state_adapter import StateAdapter
 
 class TexasUnclaimed:
 
-    def __init__(self):
-        print("🇺🇸 Texas Unclaimed Scraper Initialized")
+    def __init__(self, driver):
+        self.scraper = BaseDOMScraper(driver, "TX")
 
-    def run(self, max_records=50):
+    def search_logic(self, driver, dom):
 
-        print("🚀 Texas unified scraper running...")
+        # ⚠️ THESE SELECTORS WILL BE ADJUSTED ONCE SITE IS CONFIRMED
+        rows = dom.get_elements("table tbody tr")
 
-        raw = [
-            {
-                "property_id": "TX-001",
-                "owner_name": "JOHN TEST",
-                "address": "123 MAIN ST",
-                "city": "HOUSTON",
-                "zip": "77001",
-                "county": "Harris",
-                "amount": 120.50,
-                "property_type": "UNCLAIMED",
-                "year_reported": 2023
-            }
-        ]
+        results = []
 
-        normalized = [
-            BaseSchema.normalize(r, "TX")
-            for r in raw
-        ]
+        for r in rows:
 
-        print(f"📊 Texas normalized records: {len(normalized)}")
+            try:
+                cols = r.find_elements("tag name", "td")
 
-        return normalized
+                if len(cols) < 5:
+                    continue
+
+                results.append({
+                    "property_id": cols[0].text,
+                    "owner_name": cols[1].text,
+                    "address": cols[2].text,
+                    "city": cols[3].text,
+                    "zip": "",
+                    "county": "",
+                    "amount": cols[4].text,
+                    "property_type": "UNKNOWN",
+                    "year_reported": 0
+                })
+
+            except Exception:
+                continue
+
+        return results
+
+    def run(self, url, max_records=50):
+
+        raw = self.scraper.run(url, self.search_logic)
+
+        return StateAdapter.normalize_list(raw, "TX")

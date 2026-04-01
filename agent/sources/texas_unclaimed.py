@@ -1,55 +1,23 @@
-import os
+class TexasUnclaimed:
+    def __init__(self, driver):
+        self.driver = driver
 
-try:
-    from supabase import create_client
-except ImportError:
-    raise Exception("Supabase library not installed. Run pip install supabase")
+    def run(self, url):
+        print("🚀 Texas scraper initialized")
+        print(f"🌐 Loading URL: {url}")
 
-
-class SupabaseDB:
-
-    def __init__(self):
-
-        self.url = os.getenv("SUPABASE_URL")
-        self.key = os.getenv("SUPABASE_KEY")
-
-        if not self.url or not self.key:
-            raise Exception("Missing SUPABASE_URL or SUPABASE_KEY")
-
-        self.client = create_client(self.url, self.key)
-
-        print("🟢 Supabase connected")
-
-    def upsert_records(self, table_name, records):
-
-        if not records:
-            print("⚠️ No records to insert")
-            return
-
-        cleaned_records = [
-            r for r in records
-            if isinstance(r, dict) and "property_id" in r
-        ]
-
-        print(f"📦 Attempting insert into {table_name}")
-        print(f"📊 Records count: {len(cleaned_records)}")
-
-        if not cleaned_records:
-            print("⚠️ No valid records after cleaning")
-            return
+        if not self.driver:
+            print("⚠️ No driver provided")
+            return []
 
         try:
-            response = (
-                self.client
-                .table(table_name)
-                .upsert(cleaned_records, on_conflict="property_id")
-                .execute()
-            )
+            self.driver.get(url)
 
-            print(f"💾 Upserted {len(cleaned_records)} records into {table_name}")
+            print("📄 Page loaded")
 
-            return response
+            # TEMP: safe placeholder until DOM logic added
+            return []
 
         except Exception as e:
-            print(f"❌ Supabase insert failed: {e}")
-            return None
+            print(f"❌ Texas scraper error: {e}")
+            return []

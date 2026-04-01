@@ -1,40 +1,46 @@
-from playwright.sync_api import sync_playwright
+def _run_texas(self, counties, query, config):
 
+    print("🇺🇸 Running REAL Texas scraper via adaptive engine")
 
-class TexasUnclaimed:
-    def __init__(self):
-        self.url = "https://www.claimittexas.gov/app/claim-search"
+    from sources.texas_unclaimed import TexasUnclaimed
 
-    def run(self, max_records=50):
-        print("\n🚀 STARTING TEXAS FORM-BASED PIPELINE")
-        print("=" * 60)
+    tx = TexasUnclaimed()
+    raw_data = tx.run(max_records=50)
 
-        results = []
+    print(f"RAW TEXAS RECORDS FOUND: {len(raw_data)}")
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            page = browser.new_page()
+    # ----------------------------
+    # CLEAN FILTER (INLINE SAFE)
+    # ----------------------------
+    cleaned = []
 
-            # -----------------------------
-            # LOAD PAGE
-            # -----------------------------
-            print("📡 Loading page...")
-            page.goto(self.url, wait_until="networkidle")
-            page.wait_for_timeout(3000)
+    for item in raw_data:
 
-            # -----------------------------
-            # FIND FORM FIELDS (CRITICAL FIX)
-            # -----------------------------
-            inputs = page.query_selector_all("input")
+        text = item.get("text", "").strip()
 
-            last_name = None
-            first_name = None
+        if not text:
+            continue
 
-            for i in inputs:
-                try:
-                    name = (i.get_attribute("name") or "").lower()
-                    placeholder = (i.get_attribute("placeholder") or "").lower()
+        if "No properties" in text:
+            continue
 
+        if "Previous" in text:
+            continue
+
+        if "Select an Action" in text:
+            continue
+
+        if "Owner Name" in text and "Property Type" in text:
+            continue
+
+        if len(text) < 10:
+            continue
+
+        cleaned.append(item)
+
+    print(f"CLEAN TEXAS RECORDS: {len(cleaned)}")
+
+    return cleaned
                     if "last" in name or "last" in placeholder:
                         last_name = i
                     elif "first" in name or "first" in placeholder:

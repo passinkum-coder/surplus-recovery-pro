@@ -1,45 +1,55 @@
-from agent.sources.base_dom_scraper import BaseDOMScraper
-from agent.sources.state_adapter import StateAdapter
+import os
 
-class TexasUnclaimed:
+try:
+    from supabase import create_client
+except ImportError:
+    raise Exception("Supabase library not installed. Run pip install supabase")
 
-    def __init__(self, driver):
-        self.scraper = BaseDOMScraper(driver, "TX")
 
-    def search_logic(self, driver, dom):
+class SupabaseDB:
 
-        # ⚠️ THESE SELECTORS WILL BE ADJUSTED ONCE SITE IS CONFIRMED
-        rows = dom.get_elements("table tbody tr")
+    def __init__(self):
 
-        results = []
+        self.url = os.getenv("SUPABASE_URL")
+        self.key = os.getenv("SUPABASE_KEY")
 
-        for r in rows:
+        if not self.url or not self.key:
+            raise Exception("Missing SUPABASE_URL or SUPABASE_KEY")
 
-            try:
-                cols = r.find_elements("tag name", "td")
+        self.client = create_client(self.url, self.key)
 
-                if len(cols) < 5:
-                    continue
+        print("🟢 Supabase connected")
 
-                results.append({
-                    "property_id": cols[0].text,
-                    "owner_name": cols[1].text,
-                    "address": cols[2].text,
-                    "city": cols[3].text,
-                    "zip": "",
-                    "county": "",
-                    "amount": cols[4].text,
-                    "property_type": "UNKNOWN",
-                    "year_reported": 0
-                })
+    def upsert_records(self, table_name, records):
 
-            except Exception:
-                continue
+        if not records:
+            print("⚠️ No records to insert")
+            return
 
-        return results
+        cleaned_records = [
+            r for r in records
+            if isinstance(r, dict) and "property_id" in r
+        ]
 
-    def run(self, url, max_records=50):
+        print(f"📦 Attempting insert into {table_name}")
+        print(f"📊 Records count: {len(cleaned_records)}")
 
-        raw = self.scraper.run(url, self.search_logic)
+        if not cleaned_records:
+            print("⚠️ No valid records after cleaning")
+            return
 
-        return StateAdapter.normalize_list(raw, "TX")
+        try:
+            response = (
+                self.client
+                .table(table_name)
+                .upsert(cleaned_records, on_conflict="property_id")
+                .execute()
+            )
+
+            print(f"💾 Upserted {len(cleaned_records)} records into {table_name}")
+
+            return response
+
+        except Exception as e:
+            print(f"❌ Supabase insert failed: {e}")
+            return None

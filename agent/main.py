@@ -1,64 +1,100 @@
 import os
 
-from scrapers.county_scrapers import load_scrapers
 from agent.engine.adaptive_engine import AdaptiveScraperEngine
+from agent.db.supabase_client import SupabaseDB
 
 
-def run_county_scrapers():
-    print("========================================")
-    print("RUNNING COUNTY SCRAPERS")
-    print("========================================")
+# -----------------------------
+# SELENIUM DRIVER SETUP
+# -----------------------------
+def create_driver():
+    try:
+        from selenium import webdriver
+        from selenium.webdriver.chrome.options import Options
 
-    scrapers = load_scrapers()
+        options = Options()
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
 
-    print(f"TOTAL SCRAPERS LOADED: {len(scrapers)}")
+        driver = webdriver.Chrome(options=options)
 
-    for scraper in scrapers:
-        print("\n============================")
-        print(f"Running: {scraper.county_name}")
+        print("🟢 Selenium driver created")
+        return driver
 
-        try:
-            data = scraper.scrape()
-
-            print(f"COUNTY: {scraper.county_name}")
-            print(f"RECORDS FOUND: {len(data)}")
-
-            if data:
-                print(f"Upserting: {len(data)}")
-
-        except Exception as e:
-            print(f"ERROR in {scraper.county_name}: {e}")
+    except Exception as e:
+        print(f"⚠️ Selenium failed to start: {e}")
+        return None
 
 
-def run_state_pipeline():
-    print("\n========================================")
-    print("RUNNING STATE PIPELINE (ADAPTIVE)")
-    print("========================================")
+# -----------------------------
+# MAIN ENTRY
+# -----------------------------
+def main():
 
+    print("\n🚀 STARTING DATA PIPELINE\n")
+    print("=" * 40)
+
+    # Create engine + database
     engine = AdaptiveScraperEngine()
+    db = SupabaseDB()
 
-    # You can later replace this with dynamic input
+    # Create Selenium driver (THIS FIXES YOUR ISSUE)
+    driver = create_driver()
+
+    # -----------------------------
+    # CONFIG PASSED INTO ENGINE
+    # -----------------------------
+    config = {
+        "driver": driver,
+        "url": os.getenv(
+            "TARGET_URL",
+            "https://example.com/texas-unclaimed-property"
+        )
+    }
+
+    # -----------------------------
+    # INPUT SETTINGS
+    # -----------------------------
     state = "texas"
-    counties = []
-    query = "JOHN"
-    config = {}
+    counties = [
+        "Miami-Dade",
+        "Broward",
+        "Palm Beach",
+        "Hillsborough",
+        "Orange",
+        "Fulton",
+        "Cobb",
+        "Cherokee",
+        "Harris",
+        "Dallas"
+    ]
 
-    result = engine.run_search(state, counties, query, config)
+    query = os.getenv("SEARCH_QUERY", "JOHN")
+
+    # -----------------------------
+    # RUN ENGINE
+    # -----------------------------
+    results = engine.run_search(
+        state=state,
+        counties=counties,
+        query=query,
+        config=config
+    )
 
     print("\nFINAL RESULT:")
-    print(result)
+    print(results)
 
+    # -----------------------------
+    # PUSH TO SUPABASE
+    # -----------------------------
+    if results:
+        db.upsert_records("unclaimed_property", results)
+    else:
+        print("⚠️ No results to insert into Supabase")
 
-def main():
-    print("\n🚀 STARTING DATA PIPELINE\n")
-
-    # OLD SYSTEM (optional keep for now)
-    run_county_scrapers()
-
-    # NEW SYSTEM (THIS IS THE FIX)
-    run_state_pipeline()
-
-    print("\n✅ PIPELINE COMPLETE\n")
+    print("\n✅ PIPELINE COMPLETE")
 
 
 if __name__ == "__main__":

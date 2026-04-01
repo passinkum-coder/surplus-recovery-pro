@@ -1,4 +1,4 @@
-class FloridaUnclaimed:
+class class FloridaUnclaimedScraper:
 
     def __init__(self):
         print("🌴 Florida Unclaimed Scraper Initialized")

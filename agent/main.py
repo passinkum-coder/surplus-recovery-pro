@@ -1,55 +1,39 @@
-import os
 from agent.database.supabase_client import SupabaseDB
-from agent.sources.florida_api import FloridaAPIScraper
+from agent.sources.florida_unclaimed import FloridaUnclaimedScraper
 
 
 def main():
     print("\n🚀 STARTING SURPLUS RECOVERY PRO PIPELINE\n")
 
-    # Initialize DB (optional if you insert later)
     db = SupabaseDB()
 
     print("🟢 Supabase connected")
     print("🟢 Florida Playwright scraper initialized")
 
-    # -----------------------------
-    # CONFIG
-    # -----------------------------
     query = "SMITH"
-
-    # -----------------------------
-    # INIT SCRAPER
-    # -----------------------------
-    scraper = FloridaUnclaimedScraper()
 
     print("\n========================================")
     print("🚀 Running state pipeline: FL")
     print(f"🔎 Query: {query}")
     print("🇺🇸 Florida Playwright pipeline active\n")
 
-    # -----------------------------
-    # RUN PLAYWRIGHT SCRAPER
-    # -----------------------------
+    scraper = FloridaUnclaimedScraper()
+
     results = scraper.search(query)
 
-    # -----------------------------
-    # OUTPUT RESULTS
-    # -----------------------------
     print("\n📊 FINAL RESULTS:")
     print(results)
 
-    # -----------------------------
-    # OPTIONAL: INSERT INTO SUPABASE
-    # -----------------------------
+    # optional insert
     if results:
         try:
             db.insert("fl_unclaimed_results", {
                 "query": query,
                 "results": results
             })
-            print("🟢 Results inserted into Supabase")
+            print("🟢 Inserted into Supabase")
         except Exception as e:
-            print(f"⚠️ Supabase insert failed: {e}")
+            print(f"⚠️ DB error: {e}")
 
     print("\n✅ PIPELINE COMPLETE")
 

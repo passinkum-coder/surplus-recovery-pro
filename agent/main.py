@@ -1,7 +1,7 @@
 import os
 
 from agent.engine.adaptive_engine import AdaptiveScraperEngine
-from agent.db.supabase_client import SupabaseDB
+from agent.database.supabase_client import SupabaseDB
 
 
 # -----------------------------

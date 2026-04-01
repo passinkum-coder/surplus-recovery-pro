@@ -45,7 +45,7 @@ class FloridaUnclaimedScraper:
         results = []
 
         try:
-            url = "https://fltreasurehunt.gov/"
+            url = "https://www.fltreasurehunt.gov/app/claim-search"
             self.driver.get(url)
 
             time.sleep(3)

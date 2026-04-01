@@ -1,98 +1,111 @@
 import os
-
-from agent.engine.adaptive_engine import AdaptiveScraperEngine
 from agent.database.supabase_client import SupabaseDB
 
+# State source modules (we will wire these properly)
+from agent.sources.florida_unclaimed import FloridaUnclaimedScraper
 
-# -----------------------------
-# SELENIUM DRIVER SETUP
-# -----------------------------
-def create_driver():
-    try:
-        from selenium import webdriver
-        from selenium.webdriver.chrome.options import Options
-
-        options = Options()
-        options.add_argument("--headless=new")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-
-        driver = webdriver.Chrome(options=options)
-
-        print("🟢 Selenium driver created")
-        return driver
-
-    except Exception as e:
-        print(f"⚠️ Selenium failed to start: {e}")
-        return None
+# (we will add these next)
+# from agent.sources.georgia.georgia_foreclosure import GeorgiaScraper
+# from agent.sources.texas.texas_foreclosure import TexasScraper
 
 
-# -----------------------------
+# ----------------------------
+# CONFIG
+# ----------------------------
+
+STATE_CONFIG = {
+    "GA": {
+        "enabled": True,
+        "module": "georgia"
+    },
+    "FL": {
+        "enabled": True,
+        "module": "florida"
+    },
+    "TX": {
+        "enabled": True,
+        "module": "texas"
+    }
+}
+
+
+# ----------------------------
+# ENGINE WRAPPER
+# ----------------------------
+
+class PipelineEngine:
+
+    def __init__(self):
+        self.db = SupabaseDB()
+
+        # initialize scrapers
+        self.fl_scraper = FloridaUnclaimedScraper()
+
+        # placeholders for now
+        self.ga_scraper = None
+        self.tx_scraper = None
+
+    def run_state(self, state: str, query: str):
+
+        print("\n========================================")
+        print(f"🚀 Running state pipeline: {state}")
+        print(f"🔎 Query: {query}")
+
+        results = []
+
+        # ----------------------
+        # FLORIDA
+        # ----------------------
+        if state == "FL":
+            print("🇺🇸 Florida pipeline active")
+
+            results = self.fl_scraper.search(query)
+
+        # ----------------------
+        # GEORGIA (not wired yet)
+        # ----------------------
+        elif state == "GA":
+            print("🇺🇸 Georgia pipeline (NOT WIRED YET)")
+            results = []  # placeholder until GA module added
+
+        # ----------------------
+        # TEXAS (not wired yet)
+        # ----------------------
+        elif state == "TX":
+            print("🇺🇸 Texas pipeline (NOT WIRED YET)")
+            results = []
+
+        else:
+            print("❌ Unsupported state")
+            return []
+
+        # ----------------------
+        # SAVE TO SUPABASE
+        # ----------------------
+        if results:
+            self.db.insert_records(results)
+            print(f"🟢 Inserted {len(results)} records into Supabase")
+        else:
+            print("⚠️ No results to insert")
+
+        return results
+
+
+# ----------------------------
 # MAIN ENTRY
-# -----------------------------
+# ----------------------------
+
 def main():
 
-    print("\n🚀 STARTING DATA PIPELINE\n")
-    print("=" * 40)
+    print("\n🚀 STARTING SURPLUS RECOVERY PRO PIPELINE")
 
-    # Create engine + database
-    engine = AdaptiveScraperEngine()
-    db = SupabaseDB()
+    engine = PipelineEngine()
 
-    # Create Selenium driver (THIS FIXES YOUR ISSUE)
-    driver = create_driver()
+    # TEMP TEST RUN (you can later loop counties here)
+    state = os.getenv("STATE", "FL")
+    query = os.getenv("QUERY", "JOHN")
 
-    # -----------------------------
-    # CONFIG PASSED INTO ENGINE
-    # -----------------------------
-    config = {
-        "driver": driver,
-        "url": os.getenv(
-            "TARGET_URL",
-            "https://example.com/texas-unclaimed-property"
-        )
-    }
-
-    # -----------------------------
-    # INPUT SETTINGS
-    # -----------------------------
-    state = "texas"
-    counties = [
-        "Miami-Dade",
-        "Broward",
-        "Palm Beach",
-        "Hillsborough",
-        "Orange",
-        "Fulton",
-        "Cobb",
-        "Cherokee",
-        "Harris",
-        "Dallas"
-    ]
-
-    query = os.getenv("SEARCH_QUERY", "JOHN")
-
-    # -----------------------------
-    # RUN ENGINE
-    # -----------------------------
-    results = engine.run_search(
-        state=state,
-        counties=counties,
-        query=query,
-        config=config
-    )
-
-    print("\nFINAL RESULT:")
-    print(results)
-
-    # -----------------------------
-    # PUSH TO SUPABASE
-    # -----------------------------
-    if results:
-        db.upsert_records("unclaimed_property", results)
-    else:
-        print("⚠️ No results to insert into Supabase")
+    engine.run_state(state, query)
 
     print("\n✅ PIPELINE COMPLETE")
 

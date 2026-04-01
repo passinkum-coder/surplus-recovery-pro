@@ -1,106 +1,81 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-import time
-import os
+import requests
+import json
 
 
 class FloridaUnclaimedScraper:
 
     def __init__(self):
-        print("🟢 Florida scraper initialized")
+        print("🟢 Florida API scraper initialized")
 
-        options = Options()
-        options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+        self.session = requests.Session()
 
-        self.driver = webdriver.Chrome(options=options)
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json, text/plain, */*",
+        })
 
-    # -----------------------------
-    # FULL PAGE INTROSPECTION TOOL
-    # -----------------------------
-    def dump_page_insights(self, label="debug"):
+    def test_known_endpoints(self, query: str):
 
-        os.makedirs("debug", exist_ok=True)
+        print(f"🔎 Testing API paths for: {query}")
 
-        print("\n🧠 PAGE INTROSPECTION START")
+        base_urls = [
+            "https://www.fltreasurehunt.gov",
+            "https://www.fltreasurehunt.gov/api",
+            "https://www.fltreasurehunt.gov/app",
+        ]
 
-        html = self.driver.page_source
+        test_paths = [
+            "/search",
+            "/api/search",
+            "/api/claim-search",
+            "/claims/search",
+            "/unclaimed/search",
+            "/property/search",
+        ]
 
-        # Save HTML
-        with open(f"debug/{label}.html", "w", encoding="utf-8") as f:
-            f.write(html)
+        results_found = []
 
-        print(f"📄 HTML saved: debug/{label}.html")
+        for base in base_urls:
+            for path in test_paths:
 
-        # Screenshot
-        self.driver.save_screenshot(f"debug/{label}.png")
-        print(f"📸 Screenshot saved: debug/{label}.png")
+                url = base + path
+                params = {"q": query, "name": query, "search": query}
 
-        # -----------------------------
-        # IFRAME DETECTION
-        # -----------------------------
-        iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
-        print(f"🧩 Iframes found: {len(iframes)}")
+                try:
+                    r = self.session.get(url, params=params, timeout=10)
 
-        for i, frame in enumerate(iframes):
-            print(f"   iframe {i}: {frame.get_attribute('src')}")
+                    print(f"→ {url} [{r.status_code}]")
 
-        # -----------------------------
-        # SCRIPT INSPECTION (API hints)
-        # -----------------------------
-        scripts = self.driver.find_elements(By.TAG_NAME, "script")
+                    if r.status_code == 200:
 
-        api_hits = []
+                        content_type = r.headers.get("content-type", "")
 
-        for s in scripts:
-            src = s.get_attribute("src")
-            if src:
-                if any(x in src.lower() for x in ["api", "search", "claim", "unclaimed"]):
-                    api_hits.append(src)
+                        if "json" in content_type:
+                            print("🟢 JSON RESPONSE FOUND")
+                            try:
+                                data = r.json()
+                                results_found.append({
+                                    "url": url,
+                                    "data": data
+                                })
+                            except:
+                                pass
 
-        print(f"\n🔍 Potential API scripts found: {len(api_hits)}")
+                        elif len(r.text) > 200 and query.lower() in r.text.lower():
+                            print("🟡 POSSIBLE HTML MATCH")
 
-        for api in api_hits[:10]:
-            print("   API:", api)
+                except Exception as e:
+                    print(f"❌ {url} failed: {e}")
 
-        # -----------------------------
-        # LINK INSPECTION
-        # -----------------------------
-        links = self.driver.find_elements(By.TAG_NAME, "a")
+        return results_found
 
-        print(f"\n🔗 Total links: {len(links)}")
-
-        for l in links[:20]:
-            href = l.get_attribute("href")
-            text = l.text.strip()
-            if href:
-                print(f"   {text} -> {href}")
-
-        print("\n🧠 PAGE INTROSPECTION END\n")
-
-    # -----------------------------
-    # MAIN SEARCH FLOW (DEBUG ONLY)
-    # -----------------------------
     def search(self, query: str):
 
-        print(f"🔎 Searching Florida Unclaimed for: {query}")
+        print(f"\n🚀 API SEARCH START: {query}\n")
 
-        try:
-            url = "https://www.fltreasurehunt.gov/app/claim-search"
-            self.driver.get(url)
+        results = self.test_known_endpoints(query)
 
-            time.sleep(5)
+        print("\n📊 FINAL RESULTS:")
+        print(json.dumps(results, indent=2)[:2000])
 
-            print("🌐 Page loaded")
-
-            self.dump_page_insights("step1_inspect")
-
-        except Exception as e:
-            print(f"❌ Error: {e}")
-
-        finally:
-            self.driver.quit()
-
-        return []
+        return results
